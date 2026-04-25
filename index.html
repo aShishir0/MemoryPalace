@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Memory Palace Enhanced</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- ── Upload Panel ─────────────────────────────────────────── -->
+  <div id="upload-panel">
+    <h1>🏛️ Memory Palace Enhanced</h1>
+    <p class="subtitle">Transform your study materials into an immersive 3D learning experience</p>
+
+    <div class="upload-options">
+      <div class="upload-box" id="pdf-upload-box">
+        <div class="upload-icon">📄</div>
+        <h3>Upload PDF</h3>
+        <input type="file" id="pdf-input" accept=".pdf" hidden />
+        <button class="upload-btn" onclick="document.getElementById('pdf-input').click()">
+          Choose PDF
+        </button>
+        <p class="file-name" id="pdf-file-name"></p>
+      </div>
+
+      <div class="divider">OR</div>
+
+      <div class="upload-box">
+        <div class="upload-icon">📝</div>
+        <h3>Paste Notes</h3>
+        <textarea id="notes-input" placeholder="Paste your study notes here..."></textarea>
+      </div>
+    </div>
+
+    <button id="build-btn" class="primary-btn" disabled>Build My Learning Palace</button>
+  </div>
+
+  <!-- ── Teaching Mode Panel ──────────────────────────────────── -->
+  <div id="teaching-panel" class="hidden">
+    <div class="teaching-card">
+      <div class="teaching-header">
+        <span class="mode-badge">📖 Teaching Mode</span>
+        <span class="progress-text" id="teaching-progress">Concept 1 of 10</span>
+      </div>
+
+      <div class="concept-content">
+        <h2 id="concept-title">Loading...</h2>
+        <div id="concept-detail" class="detail-text"></div>
+        <div id="concept-mnemonic" class="mnemonic-box">
+          <strong>💡 Memory Tip:</strong>
+          <p id="mnemonic-text"></p>
+        </div>
+      </div>
+
+      <div class="teaching-controls">
+        <button id="prev-concept-btn" class="secondary-btn">← Previous</button>
+        <button id="mark-learned-btn" class="primary-btn">✓ I've Got This</button>
+        <button id="next-concept-btn" class="primary-btn">Next →</button>
+      </div>
+
+      <button id="ready-assessment-btn" class="assessment-ready-btn hidden">
+        🎯 I'm Ready for Assessment
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Assessment Mode Panel ────────────────────────────────── -->
+  <div id="assessment-panel" class="hidden">
+    <div class="assessment-card">
+      <h3>Try to recall what this object represents</h3>
+      <p class="hint-text">Walk around and hover over objects to test yourself</p>
+
+      <!-- AI Socratic question (Part 6) -->
+      <div id="ai-question" class="hidden"></div>
+
+      <!-- User typed answer (Part 6) -->
+      <input id="user-answer" type="text" class="hidden" placeholder="Type your answer..." />
+      <button id="submit-answer-btn" class="primary-btn hidden">Submit Answer</button>
+
+      <!-- Fallback reveal -->
+      <button id="reveal-btn" class="reveal-btn">Reveal Answer</button>
+
+      <div id="assessment-result" class="hidden"></div>
+      <button id="next-object-btn" class="hidden primary-btn" style="margin-top:12px;width:100%;">
+        Next Object →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 3D Canvas ─────────────────────────────────────────────── -->
+  <canvas id="three-canvas" style="display:none;"></canvas>
+
+  <!-- ── UI Overlays ───────────────────────────────────────────── -->
+  <div id="tooltip" class="tooltip hidden"></div>
+  <div id="hud" class="hud hidden"></div>
+
+  <div id="progress-bar" class="progress-bar hidden">
+    <div class="progress-fill" id="progress-fill"></div>
+    <span class="progress-label" id="progress-label">0/10 Mastered</span>
+  </div>
+
+  <div id="crosshair">+</div>
+
+  <div id="loading" class="hidden">
+    <div class="loading-spinner"></div>
+    <p>🤖 AI is building your learning palace...</p>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

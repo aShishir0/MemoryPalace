@@ -1,0 +1,18 @@
+{
+  "name": "memory-palace-enhanced",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "howler": "^2.2.4",
+    "pdfjs-dist": "^4.10.38",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}
