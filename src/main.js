@@ -41,7 +41,7 @@ setupUploadPanel(async (sourceText) => {
     assignConceptsToMeshes(meshMap, palaceData.objects);
 
     // 4. Setup raycaster for hover detection
-    const { update: updateRaycaster } = setupRaycaster(
+    const raycasterInstance = setupRaycaster(
       camera,
       meshMap,
       (mesh) => {
@@ -59,7 +59,7 @@ setupUploadPanel(async (sourceText) => {
         store.assessment.currentHoveredSlot = null;
       }
     );
-    addFrameCallback(updateRaycaster);
+    addFrameCallback(raycasterInstance.update);
 
     // 5. Show 3D canvas and UI overlays
     loading.classList.add('hidden');
@@ -71,9 +71,18 @@ setupUploadPanel(async (sourceText) => {
     // 6. Update HUD with palace info
     updateHUD();
 
-    // 7. Start teaching mode
-    store.mode = 'teaching';
-    startTeachingMode();
+    // 7. Tutorial Trigger Logic
+    store.mode = 'exploring';
+
+    // Create a click listener for the trigger screen
+    canvas.addEventListener('mousedown', () => {
+      const interactedMesh = raycasterInstance.handleInteraction();
+      if (interactedMesh && interactedMesh.userData.slotName === 'monitor') {
+        console.log('Trigger screen interacted! Starting tutorial...');
+        store.mode = 'teaching';
+        startTeachingMode();
+      }
+    });
 
     // 8. Load spaced repetition data and highlight due objects
     loadSpacedRep();
@@ -83,7 +92,11 @@ setupUploadPanel(async (sourceText) => {
     startAmbient();
 
     // 10. Click canvas to lock pointer for first-person controls
-    canvas.addEventListener('click', () => controls.lock(), { once: true });
+    canvas.addEventListener('click', () => {
+      if (!controls.isLocked) {
+        controls.lock();
+      }
+    });
 
   } catch (error) {
     console.error('Palace build error:', error);

@@ -27,5 +27,15 @@ export function setupRaycaster(camera, meshMap, onHover, onLeave) {
     }
   }
 
-  return { update };
+  // Handle click interaction
+  function handleInteraction() {
+    raycaster.setFromCamera(center, camera);
+    const hits = raycaster.intersectObjects(meshes);
+    if (hits.length > 0) {
+      return hits[0].object;
+    }
+    return null;
+  }
+
+  return { update, handleInteraction };
 }

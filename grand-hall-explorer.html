@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Grand Hall Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+  canvas { display: block; }
+
+  #crosshair {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 10;
+  }
+  #crosshair::before, #crosshair::after {
+    content: ''; position: absolute; background: rgba(255,255,255,0.85);
+    border-radius: 2px;
+  }
+  #crosshair::before { width: 2px; height: 18px; top: -9px; left: -1px; }
+  #crosshair::after  { width: 18px; height: 2px; left: -9px; top: -1px; }
+
+  #hud {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; pointer-events: none; z-index: 10;
+  }
+  .key {
+    background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 12px;
+    backdrop-filter: blur(6px);
+  }
+  .key span { color: #f0c040; font-weight: bold; }
+
+  #overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; cursor: pointer; transition: opacity 0.5s;
+  }
+  #overlay h1 {
+    font-size: 3.5rem; color: #f0c040; letter-spacing: 0.2em;
+    text-transform: uppercase; margin-bottom: 8px;
+    text-shadow: 0 0 40px rgba(240,192,64,0.7);
+  }
+  #overlay h2 { color: rgba(255,255,255,0.4); font-size: 1rem; letter-spacing: 0.3em; margin-bottom: 48px; font-weight: normal; }
+  #overlay .btn {
+    background: #f0c040; color: #000; padding: 16px 48px;
+    border-radius: 4px; font-size: 1rem; font-weight: bold;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(240,192,64,0.5); }
+    50% { box-shadow: 0 0 0 20px rgba(240,192,64,0); }
+  }
+
+  #info {
+    position: fixed; top: 16px; right: 16px;
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.65); padding: 10px 16px; border-radius: 8px;
+    font-size: 12px; line-height: 2; backdrop-filter: blur(6px);
+    pointer-events: none; z-index: 10;
+  }
+
+  #legend {
+    position: fixed; top: 16px; left: 16px;
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.65); padding: 10px 16px; border-radius: 8px;
+    font-size: 11px; line-height: 1.9; backdrop-filter: blur(6px);
+    pointer-events: none; z-index: 10; max-width: 200px;
+  }
+  #legend b { color: #f0c040; display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <h1>Grand Hall</h1>
+  <h2>First Person Explorer — 15+ Objects</h2>
+  <div class="btn">Click to Enter</div>
+</div>
+
+<div id="crosshair"></div>
+
+<div id="hud">
+  <div class="key"><span>W A S D</span> Move</div>
+  <div class="key"><span>Mouse</span> Look</div>
+  <div class="key"><span>Shift</span> Sprint</div>
+  <div class="key"><span>ESC</span> Pause</div>
+</div>
+
+<div id="info">
+  FPS: <span id="fps">0</span><br>
+  Pos: <span id="pos">0, 0</span>
+</div>
+
+<div id="legend">
+  <b>Objects in Hall</b>
+  1. Grand Fireplace<br>
+  2. Sofa Set<br>
+  3. Coffee Table<br>
+  4. Bookshelf (×2)<br>
+  5. Dining Table<br>
+  6. Dining Chairs<br>
+  7. Desk + Monitor<br>
+  8. Office Chair<br>
+  9. Floor Lamps (×3)<br>
+  10. Potted Plants (×5)<br>
+  11. Chandelier<br>
+  12. Piano<br>
+  13. Billiard Table<br>
+  14. Bar Counter<br>
+  15. Trophy Cabinet<br>
+  16. Grandfather Clock<br>
+  17. Armchair<br>
+  18. Wall Paintings<br>
+  19. Decorative Pillars<br>
+  20. Rugs
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─── Scene ────────────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0a06);
+scene.fog = new THREE.Fog(0x0d0a06, 25, 55);
+
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.05, 120);
+camera.position.set(0, 1.7, 6);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.appendChild(renderer.domElement);
+
+// ─── Lighting ─────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffe8c0, 0.25));
+
+// Chandelier main light (center)
+const chanLight = new THREE.PointLight(0xfff8e0, 3.5, 22);
+chanLight.position.set(0, 5.5, 0);
+chanLight.castShadow = true;
+chanLight.shadow.mapSize.set(2048, 2048);
+chanLight.shadow.radius = 6;
+scene.add(chanLight);
+
+// Secondary chandeliers
+const chanLight2 = new THREE.PointLight(0xffe0a0, 2.0, 18);
+chanLight2.position.set(-9, 5.5, -9);
+chanLight2.castShadow = false;
+scene.add(chanLight2);
+
+const chanLight3 = new THREE.PointLight(0xffe0a0, 2.0, 18);
+chanLight3.position.set(9, 5.5, -9);
+chanLight3.castShadow = false;
+scene.add(chanLight3);
+
+// Fireplace light
+const fireLight = new THREE.PointLight(0xff5500, 2.5, 9);
+fireLight.position.set(0, 1.0, -13.5);
+scene.add(fireLight);
+
+// Bar light (warm)
+const barLight = new THREE.PointLight(0xff9922, 1.5, 8);
+barLight.position.set(-11, 2.5, 9);
+scene.add(barLight);
+
+// Window blue fill
+const winLight = new THREE.DirectionalLight(0x7ab0ff, 0.5);
+winLight.position.set(14, 5, 4);
+scene.add(winLight);
+
+// Floor lamp lights
+const fl1 = new THREE.PointLight(0xffcc66, 1.2, 7);
+fl1.position.set(-8, 2.4, -4); scene.add(fl1);
+const fl2 = new THREE.PointLight(0xffcc66, 1.2, 7);
+fl2.position.set(11, 2.4, 5); scene.add(fl2);
+const fl3 = new THREE.PointLight(0xffcc66, 1.0, 6);
+fl3.position.set(5, 2.4, -8); scene.add(fl3);
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function mat(color, rough=0.8, metal=0, emi=0x000000, emiInt=0) {
+  return new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, emissive: emi, emissiveIntensity: emiInt });
+}
+function box(w,h,d,m,x,y,z,rx=0,ry=0,rz=0) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
+  mesh.position.set(x,y,z); mesh.rotation.set(rx,ry,rz);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  scene.add(mesh); return mesh;
+}
+function cyl(rt,rb,h,seg,m,x,y,z,rx=0,ry=0,rz=0) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg), m);
+  mesh.position.set(x,y,z); mesh.rotation.set(rx,ry,rz);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  scene.add(mesh); return mesh;
+}
+function sph(r,seg,m,x,y,z) {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(r,seg,seg), m);
+  mesh.position.set(x,y,z);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  scene.add(mesh); return mesh;
+}
+function tor(R,r,seg,m,x,y,z,rx=0,ry=0,rz=0) {
+  const mesh = new THREE.Mesh(new THREE.TorusGeometry(R,r,seg,seg*2), m);
+  mesh.position.set(x,y,z); mesh.rotation.set(rx,ry,rz);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  scene.add(mesh); return mesh;
+}
+
+// ─── Materials ────────────────────────────────────────────────────────────────
+const mFloorA  = mat(0x9b7820, 0.85);
+const mFloorB  = mat(0x5e4810, 0.85);
+const mWall    = mat(0xc8aa80, 0.95);
+const mWallPnl = mat(0xb8955e, 0.9);
+const mCeiling = mat(0xf5eedd, 0.98);
+const mWood    = mat(0x7a3a10, 0.72, 0.05);
+const mWoodLt  = mat(0xa05828, 0.72, 0.05);
+const mWoodDk  = mat(0x4a2208, 0.8, 0.05);
+const mMetal   = mat(0x9a9a9a, 0.25, 0.9);
+const mGold    = mat(0xc8a832, 0.2, 0.85);
+const mSilver  = mat(0xcccccc, 0.15, 0.95);
+const mFabric  = mat(0x4a3028, 0.97);
+const mFabricR = mat(0x802020, 0.97);
+const mFabricB = mat(0x203060, 0.97);
+const mFabricG = mat(0x2a4a25, 0.97);
+const mLeather = mat(0x2a1508, 0.55, 0.1);
+const mLeatherB= mat(0x1a2840, 0.55, 0.1);
+const mBlack   = mat(0x101010, 0.5, 0.3);
+const mWhite   = mat(0xf8f8f0, 0.92);
+const mGlass   = new THREE.MeshStandardMaterial({ color:0x99ddff, roughness:0.02, metalness:0.05, transparent:true, opacity:0.28 });
+const mGlassDk = new THREE.MeshStandardMaterial({ color:0x334455, roughness:0.05, metalness:0.1, transparent:true, opacity:0.55 });
+const mMirror  = new THREE.MeshStandardMaterial({ color:0xaaddff, roughness:0.03, metalness:0.92, transparent:true, opacity:0.7 });
+const mBrickRed= mat(0x8b3820, 0.96);
+const mMortar  = mat(0xb0a090, 0.98);
+const mMarble  = mat(0xe8e0d0, 0.4, 0.1);
+const mMarbleDk= mat(0xa09880, 0.4, 0.1);
+const mRug1    = mat(0x7a2020, 0.98);
+const mRug2    = mat(0xc0882a, 0.98);
+const mPlant   = mat(0x2a6015, 0.9);
+const mPlant2  = mat(0x1a5010, 0.9);
+const mPot     = mat(0x8a4820, 0.7);
+const mLampShd = new THREE.MeshStandardMaterial({ color:0xffe8a0, roughness:0.9, side:THREE.DoubleSide, transparent:true, opacity:0.82 });
+const mEmber   = new THREE.MeshStandardMaterial({ color:0xff4400, emissive:0xff2200, emissiveIntensity:3 });
+const mScreen  = new THREE.MeshStandardMaterial({ color:0x002244, emissive:0x1155cc, emissiveIntensity:0.6, roughness:0.3 });
+const mBook    = [mat(0xc0392b), mat(0x2980b9), mat(0x27ae60), mat(0xe67e22), mat(0x8e44ad), mat(0x16a085), mat(0xd35400), mat(0x2c3e50)];
+const mGreenFelt = mat(0x1a6030, 0.97);
+const mIvory   = mat(0xf5f0e0, 0.85);
+const mEbony   = mat(0x0a0a12, 0.7);
+const mBilliard= mat(0x0a5a20, 0.97);
+const mCue     = mat(0xc8a060, 0.5);
+const mTrophy  = mat(0xd4a020, 0.15, 0.9);
+const mClock   = mat(0x5a3010, 0.75, 0.05);
+const mPainting= mat(0xc09050, 0.7, 0.1);
+const mPillar  = mat(0xe0d8c8, 0.4, 0.05);
+const mPillarB = mat(0xc8c0b0, 0.4, 0.05);
+
+// ─── Hall Structure (24×14×26) ────────────────────────────────────────────────
+const RW=24, RH=6.5, RD=28;
+
+// Marble checkerboard floor (large tiles)
+for (let i=-12;i<12;i++) for(let j=-14;j<14;j++){
+  const m = (i+j)%2===0 ? mMarble : mMarbleDk;
+  const t = new THREE.Mesh(new THREE.BoxGeometry(1,0.08,1),m);
+  t.position.set(i+0.5,-0.04,j+0.5);
+  t.receiveShadow=true; scene.add(t);
+}
+
+// Ceiling with coffers
+box(RW,0.15,RD, mCeiling, 0,RH,0);
+// Ceiling coffers grid
+for(let x=-9;x<=9;x+=6) for(let z=-12;z<=12;z+=6){
+  box(5,0.06,5,mat(0xe8e0d0,0.97),x,RH-0.08,z);
+  box(4.5,0.04,4.5,mWallPnl,x,RH-0.1,z);
+}
+
+// Walls
+box(0.2,RH,RD,mWall,-RW/2,RH/2,0);
+box(0.2,RH,RD,mWall, RW/2,RH/2,0);
+box(RW, RH,0.2,mWall,0,RH/2,-RD/2);
+// Front wall with large entrance arch gap
+box(7,RH,0.2,mWall,-8.5,RH/2,RD/2);
+box(7,RH,0.2,mWall, 8.5,RH/2,RD/2);
+box(RW,1.2,0.2,mWall,0,RH-0.6,RD/2);
+// Arch above entrance
+box(10,0.4,0.2,mWallPnl,0,RH-1.4,RD/2);
+
+// Wall paneling (wainscoting)
+for(const [x,z,w,d] of [
+  [-RW/2+0.12,0,0.08,RD],
+  [ RW/2-0.12,0,0.08,RD],
+  [0,-RD/2+0.12,RW,0.08],
+]){
+  box(w,1.2,d,mWoodDk,x,0.6,z);  // lower panel
+  box(w,0.08,d,mWoodLt,x,1.24,z); // rail
+}
+
+// Baseboard
+for(const [x,z,w,d] of [
+  [-RW/2+0.12,0,0.05,RD],[ RW/2-0.12,0,0.05,RD],
+  [0,-RD/2+0.12,RW,0.05],[0, RD/2-0.12,RW,0.05],
+]) box(w,0.18,d,mWoodDk,x,0.09,z);
+
+// Crown molding
+for(const [x,z,w,d] of [
+  [-RW/2+0.12,0,0.06,RD],[ RW/2-0.12,0,0.06,RD],
+  [0,-RD/2+0.12,RW,0.06],
+]) box(w,0.25,d,mWoodDk,x,RH-0.13,z);
+
+// Ceiling beams
+for(let x=-8;x<=8;x+=8) box(0.2,0.3,RD,mWoodDk,x,RH-0.15,0);
+for(let z=-8;z<=8;z+=8) box(RW,0.3,0.2,mWoodDk,0,RH-0.15,z);
+
+// ─── 1. GRAND FIREPLACE (back wall center) ────────────────────────────────────
+// Brick surround
+box(5.5,4.5,0.7,mBrickRed,0,2.25,-RD/2+0.45);
+// Dark opening
+box(3.0,2.0,0.8,mat(0x060606),0,1.0,-RD/2+0.45);
+// Mantle
+box(6.5,0.2,0.9,mWood,0,3.55,-RD/2+0.5);
+// Marble hearth
+box(4.0,0.12,1.2,mMarble,0,0.06,-RD/2+0.8);
+// Firebox interior
+box(2.8,1.85,0.3,mat(0x0a0808),-0,1.0,-RD/2+0.2);
+// Embers
+for(let i=0;i<8;i++){
+  const ex=(-1+i*0.28), ez=-RD/2+0.55;
+  const e=new THREE.Mesh(new THREE.SphereGeometry(0.06+Math.random()*0.05,8,8),mEmber);
+  e.position.set(ex,0.1+Math.random()*0.12,ez); scene.add(e);
+}
+// Log shapes
+box(1.2,0.1,0.12,mWood,-0.4,0.1,-RD/2+0.52,0,0,0.2);
+box(1.2,0.1,0.12,mWood, 0.4,0.1,-RD/2+0.52,0,0,-0.15);
+// Mantle decor
+cyl(0.08,0.12,0.5,12,mPot,-1.2,3.67,-RD/2+0.5);
+cyl(0.08,0.12,0.5,12,mPot, 1.2,3.67,-RD/2+0.5);
+sph(0.14,12,mat(0xc03030,0.3,0.5),-1.2,4.0,-RD/2+0.5);
+sph(0.14,12,mat(0x3040c0,0.3,0.5), 1.2,4.0,-RD/2+0.5);
+// Clock on mantle (small)
+box(0.25,0.35,0.12,mWoodDk,0,3.8,-RD/2+0.48);
+cyl(0.1,0.1,0.02,20,mGold,0,3.82,-RD/2+0.42);
+
+// ─── 2. LARGE MIRROR above fireplace ─────────────────────────────────────────
+box(0.12,2.2,3.5,mGold,0,5.1,-RD/2+0.22);
+box(0.08,2.0,3.2,mMirror,0,5.1,-RD/2+0.23);
+
+// ─── 3. SOFA SET (near fireplace) ────────────────────────────────────────────
+// Main large sofa
+box(4.0,0.6,1.1,mLeatherB, 0,0.3,-10);
+box(4.0,0.85,0.22,mLeatherB,0,0.73,-10.5);
+box(0.25,0.6,1.1,mLeatherB,-2.12,0.3,-10);
+box(0.25,0.6,1.1,mLeatherB, 2.12,0.3,-10);
+box(0.18,0.1,1.0,mBlack,-2.0,0.64,-10);
+box(0.18,0.1,1.0,mBlack, 2.0,0.64,-10);
+// Seat cushions
+for(let i=-1;i<=1;i++) box(1.1,0.2,0.95,mFabricB,i*1.2,0.72,-10);
+// Back cushions
+for(let i=-1;i<=1;i++) box(1.0,0.45,0.15,mFabricB,i*1.2,0.95,-10.41);
+// Throw pillows
+box(0.45,0.4,0.14,mFabricR,-1.7,1.1,-10.37,0,0,0.15);
+box(0.45,0.4,0.14,mFabricR, 1.7,1.1,-10.37,0,0,-0.15);
+// Sofa legs
+for(const[x,z]of[[-1.85,-9.55],[-1.85,-10.45],[1.85,-9.55],[1.85,-10.45]])
+  box(0.08,0.12,0.08,mWoodDk,x,0.06,z);
+
+// Side armchair left
+box(1.1,0.5,1.0,mLeather,-4.5,0.25,-9.8);
+box(1.1,0.7,0.2,mLeather,-4.5,0.65,-10.25);
+box(0.22,0.5,1.0,mLeather,-5.05,0.25,-9.8);
+box(0.22,0.5,1.0,mLeather,-3.95,0.25,-9.8);
+box(0.9,0.18,0.8,mFabric,-4.5,0.58,-9.8);
+
+// Side armchair right
+box(1.1,0.5,1.0,mLeather,4.5,0.25,-9.8);
+box(1.1,0.7,0.2,mLeather, 4.5,0.65,-10.25);
+box(0.22,0.5,1.0,mLeather, 5.05,0.25,-9.8);
+box(0.22,0.5,1.0,mLeather, 3.95,0.25,-9.8);
+box(0.9,0.18,0.8,mFabric,  4.5,0.58,-9.8);
+
+// ─── 4. COFFEE TABLE ─────────────────────────────────────────────────────────
+box(2.2,0.08,1.0,mWood,0,0.48,-8.8);
+box(1.8,0.06,0.7,mGlass,0,0.5,-8.8);
+for(const[x,z]of[[-0.95,-8.42],[-0.95,-9.18],[0.95,-8.42],[0.95,-9.18]])
+  box(0.07,0.48,0.07,mWoodDk,x,0.24,z);
+// Items on table
+box(0.4,0.04,0.3,mat(0x222222,0.5),0.5,0.55,-8.8);
+sph(0.1,12,mGold,-0.4,0.58,-8.8);
+cyl(0.05,0.07,0.22,12,mPot,0.1,0.59,-9.0);
+
+// ─── 5. LARGE RUG (seating area) ─────────────────────────────────────────────
+box(7.0,0.04,5.5,mRug1,0,0.02,-9.5);
+box(6.5,0.042,5.0,mRug2,0,0.022,-9.5);
+box(6.0,0.044,4.5,mRug1,0,0.024,-9.5);
+box(5.5,0.046,4.0,mat(0xc8802a,0.98),0,0.026,-9.5);
+
+// ─── 6. BOOKSHELVES (left wall) ──────────────────────────────────────────────
+function bookshelf(x,z,ry=0){
+  const g=new THREE.Group();
+  // Frame
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(2.2,4.5,0.5),mWoodDk);
+  // Back panel
+  const back=new THREE.Mesh(new THREE.BoxGeometry(2.1,4.4,0.05),mWood);
+  back.position.z=-0.2;
+  // Shelves
+  for(let i=0;i<5;i++){
+    const shelf=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.06,0.44),mWoodLt);
+    shelf.position.y=-1.9+i*0.95;
+    shelf.castShadow=true; shelf.receiveShadow=true;
+    g.add(shelf);
+    // Books on each shelf
+    let bx=-0.85;
+    for(let j=0;j<10;j++){
+      const bw=0.06+Math.random()*0.05;
+      const bh=0.3+Math.random()*0.35;
+      const b=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,0.35),mBook[j%8]);
+      b.position.set(bx+bw/2,-1.87+i*0.95+bh/2,-0.02);
+      b.rotation.y=(Math.random()-0.5)*0.05;
+      b.castShadow=true; g.add(b);
+      bx+=bw+0.01;
+      if(bx>0.88) break;
+    }
+  }
+  frame.castShadow=true; frame.receiveShadow=true;
+  back.castShadow=true;
+  g.add(frame,back);
+  g.position.set(x,2.25,z);
+  g.rotation.y=ry;
+  scene.add(g);
+}
+bookshelf(-11.2,-11, Math.PI/2);
+bookshelf(-11.2,-4,  Math.PI/2);
+bookshelf(-11.2, 3,  Math.PI/2);
+
+// ─── 7. CHANDELIER (main, center) ────────────────────────────────────────────
+function chandelier(x,y,z,scale=1){
+  // Chain
+  cyl(0.03*scale,0.03*scale,1.5*scale,8,mGold,x,y+0.75*scale,z);
+  // Main ring
+  tor(0.8*scale,0.04*scale,16,mGold,x,y,z,Math.PI/2);
+  // Arms (6)
+  for(let i=0;i<6;i++){
+    const a=i/6*Math.PI*2;
+    const ax=Math.cos(a)*0.8*scale, az=Math.sin(a)*0.8*scale;
+    cyl(0.015*scale,0.015*scale,0.5*scale,8,mGold,x+ax,y-0.25*scale,z+az,0,0,Math.PI*0.15);
+    // Candle bulb
+    cyl(0.04*scale,0.04*scale,0.15*scale,8,mIvory,x+ax,y-0.45*scale,z+az);
+    sph(0.06*scale,8,mat(0xffff99,0.1,0,0xffee44,1.5),x+ax,y-0.34*scale,z+az);
+  }
+  // Center drop crystal
+  cyl(0.3*scale,0.05*scale,0.6*scale,16,mGold,x,y-0.3*scale,z);
+  sph(0.12*scale,12,mGlass,x,y-0.65*scale,z);
+  // Outer ring
+  tor(1.2*scale,0.03*scale,20,mGold,x,y-0.1*scale,z,Math.PI/2);
+  for(let i=0;i<8;i++){
+    const a=i/8*Math.PI*2;
+    const ax=Math.cos(a)*1.2*scale, az=Math.sin(a)*1.2*scale;
+    cyl(0.015*scale,0.015*scale,0.4*scale,8,mGold,x+ax,y-0.3*scale,z+az,0,0,Math.PI*0.12);
+    sph(0.06*scale,8,mat(0xffff88,0.1,0,0xffee44,1.2),x+ax,y-0.48*scale,z+az);
+  }
+}
+chandelier(0,RH-0.8,0,1.5);
+chandelier(-9,RH-0.8,-9,0.9);
+chandelier( 9,RH-0.8,-9,0.9);
+
+// ─── 8. GRAND PIANO (corner) ─────────────────────────────────────────────────
+// Piano body (grand piano silhouette)
+box(2.6,1.0,1.6,mEbony,  9,0.5,-11.5);
+box(1.0,1.0,1.6,mEbony,  7.7,0.5,-11.5);
+box(2.2,1.0,0.5,mEbony,  8.5,0.5,-10.45);
+// Lid
+box(2.6,0.07,1.7,mEbony, 9,1.04,-11.5, 0,0,-0.18);
+// Keys area
+box(1.6,0.12,0.35,mIvory, 8.4,0.56,-10.6);
+// Piano keys detail
+for(let k=0;k<14;k++){
+  box(0.07,0.05,0.28,k%7<5?mEbony:mIvory, 7.65+k*0.12,0.6,-10.62);
+}
+// Piano legs
+for(const[px,pz]of[[7.9,-10.6],[10.1,-10.6],[7.9,-12.4],[10.1,-12.4],[9.0,-12.4]])
+  cyl(0.07,0.07,0.55,8,mEbony,px,0.28,pz);
+// Piano bench
+box(0.9,0.08,0.45,mEbony,8.4,0.55,-9.8);
+box(0.85,0.04,0.4,mLeather,8.4,0.59,-9.8);
+for(const[px,pz]of[[8.0,-9.62],[8.8,-9.62],[8.0,-9.98],[8.8,-9.98]])
+  cyl(0.04,0.04,0.55,8,mEbony,px,0.28,pz);
+// Sheet music
+box(0.5,0.4,0.04,mWhite,8.4,0.85,-10.38,-0.3);
+
+// ─── 9. BILLIARD TABLE (center area) ─────────────────────────────────────────
+// Table body
+box(3.6,0.9,2.0,mWood,-3,0.45,4.0);
+// Felt surface
+box(3.2,0.06,1.6,mBilliard,-3,0.93,4.0);
+// Rails
+box(3.6,0.14,0.12,mWoodLt,-3,0.97,3.06);
+box(3.6,0.14,0.12,mWoodLt,-3,0.97,4.94);
+box(0.12,0.14,1.8,mWoodLt,-4.74,0.97,4.0);
+box(0.12,0.14,1.8,mWoodLt,-1.26,0.97,4.0);
+// Pockets (dark circles at corners & midpoints)
+for(const[px,pz]of[[-4.7,3.1],[-4.7,4.9],[-1.3,3.1],[-1.3,4.9],[-3.0,3.08],[-3.0,4.92]])
+  cyl(0.09,0.09,0.05,12,mBlack,px,0.99,pz);
+// Billiard balls
+const ballColors=[0xf0f0f0,0xf4c000,0xd02020,0xb03060,0x2020b0,0xa01010,0x602080,0x802010];
+for(let i=0;i<8;i++) sph(0.065,10,mat(ballColors[i],0.1,0.05),-3.5+i*0.18,1.0,4.0+Math.sin(i*1.3)*0.3);
+// Cue sticks resting on table
+box(1.5,0.04,0.04,mCue,-2.1,1.01,3.4,0,0.2);
+box(1.5,0.04,0.04,mCue,-2.1,1.01,4.6,0,-0.2);
+// Legs
+for(const[px,pz]of[[-4.5,3.2],[-4.5,4.8],[-1.5,3.2],[-1.5,4.8]])
+  box(0.12,0.9,0.12,mWoodDk,px,0.45,pz);
+
+// ─── 10. BAR COUNTER (left far wall) ─────────────────────────────────────────
+// Counter body
+box(5.5,1.15,0.9,mWoodDk,-9.2,0.58,10.5);
+// Counter top marble
+box(5.7,0.1,1.1,mMarble,-9.2,1.2,10.5);
+// Bar front panel
+box(5.5,0.9,0.08,mWoodLt,-9.2,0.55,10.08);
+// Shelf behind bar
+box(4.5,0.08,0.35,mWoodDk,-9.5,2.2,11.0);
+box(4.5,0.08,0.35,mWoodDk,-9.5,2.8,11.0);
+box(4.5,0.08,0.35,mWoodDk,-9.5,3.4,11.0);
+// Back wall of bar
+box(0.12,4.0,5.0,mWoodDk,-11.6,2.0,10.5);
+// Mirror behind bar
+box(0.08,2.8,4.2,mMirror,-11.55,2.4,10.5);
+// Bottles on shelves
+const bottleColors=[0x2a5010,0x8b1a1a,0xf0c030,0x1a2a6a,0x3a1a5a];
+for(let row=0;row<3;row++) for(let col=0;col<7;col++){
+  const bc=bottleColors[(row*7+col)%5];
+  cyl(0.055,0.06,0.28+row*0.04,16,mat(bc,0.2,0.1,bc,0.05),
+    -11.0+col*0.62,2.36+row*0.6+0.14+row*0.04,11.08);
+  cyl(0.03,0.05,0.06,12,mat(bc,0.2),
+    -11.0+col*0.62,2.52+row*0.6+0.28+row*0.04+0.03,11.08);
+}
+// Bar stools
+for(let i=0;i<4;i++){
+  cyl(0.22,0.22,0.06,16,mFabricR,-10.5+i*1.1,0.86,9.7);
+  cyl(0.04,0.04,0.86,8,mMetal,-10.5+i*1.1,0.43,9.7);
+  for(let a=0;a<4;a++){
+    const ang=a/4*Math.PI*2;
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.5,8),mMetal);
+    leg.position.set(-10.5+i*1.1+Math.cos(ang)*0.2,0.25,9.7+Math.sin(ang)*0.2);
+    leg.rotation.set(Math.sin(ang)*0.4,0,-Math.cos(ang)*0.4);
+    scene.add(leg);
+  }
+}
+// Glasses on counter
+for(let i=0;i<5;i++) cyl(0.045,0.06,0.16,12,mGlass,-8.5+i*0.7,1.26,10.1);
+
+// ─── 11. DINING TABLE (right side) ───────────────────────────────────────────
+box(3.5,0.1,1.6,mWoodLt,9,0.82,3.0);
+for(const[px,pz]of[[7.4,2.2],[7.4,3.8],[10.6,2.2],[10.6,3.8]])
+  box(0.1,0.82,0.1,mWood,px,0.41,pz);
+// Tablecloth
+box(3.3,0.02,1.4,mWhite,9,0.88,3.0);
+// Place settings
+for(const[px,side]of[[7.8,1],[8.5,1],[9.2,1],[9.9,1],[10.6,1]]){
+  box(0.3,0.01,0.22,mWhite,px,0.9,2.45);
+  box(0.3,0.01,0.22,mWhite,px,0.9,3.55);
+  cyl(0.05,0.06,0.1,12,mSilver||mMetal,px,0.95,2.45);
+  cyl(0.05,0.06,0.1,12,mMetal,px,0.95,3.55);
+}
+// Candle centerpiece
+cyl(0.04,0.05,0.4,12,mIvory,9.0,1.08,3.0);
+sph(0.06,8,mat(0xffee88,0.1,0,0xffdd44,2.0),9.0,1.3,3.0);
+const candleLight=new THREE.PointLight(0xffcc55,0.8,4);
+candleLight.position.set(9,1.3,3.0); scene.add(candleLight);
+// Dining chairs (6)
+for(const[px,pz,ry]of[
+  [7.0,2.2,Math.PI/2],[7.0,3.0,Math.PI/2],[7.0,3.8,Math.PI/2],
+  [11.0,2.2,-Math.PI/2],[11.0,3.0,-Math.PI/2],[11.0,3.8,-Math.PI/2],
+]){
+  box(0.55,0.08,0.52,mWoodLt,px,0.55,pz);
+  box(0.55,0.7,0.1,mWoodLt,px,0.9,pz+Math.cos(ry)*0.25);
+  for(const[dx,dz]of[[-0.2,-0.2],[0.2,-0.2],[-0.2,0.2],[0.2,0.2]])
+    box(0.05,0.55,0.05,mWood,px+dx,0.28,pz+dz);
+  box(0.45,0.12,0.4,mFabricR,px,0.63,pz);
+}
+
+// ─── 12. DESK + MONITOR (right wall) ─────────────────────────────────────────
+box(2.4,0.07,1.0,mWood,10.2,0.82,-4.0);
+for(const[px,pz]of[[9.1,-3.55],[9.1,-4.45],[11.3,-3.55],[11.3,-4.45]])
+  box(0.07,0.82,0.07,mWood,px,0.41,pz);
+// Drawer
+box(0.55,0.7,0.85,mWoodLt,11.1,0.42,-4.0);
+for(let i=0;i<3;i++){
+  box(0.5,0.18,0.04,mWood,11.1,0.15+i*0.22,-3.6);
+  cyl(0.03,0.03,0.08,8,mGold,11.1,0.15+i*0.22,-3.56,Math.PI/2);
+}
+// Monitor
+box(0.07,0.75,1.1,mBlack,10.2,1.28,-4.0);
+box(0.04,0.62,0.98,mScreen,10.14,1.28,-4.0);
+// Stand
+box(0.12,0.55,0.07,mBlack,10.2,0.9,-3.75);
+box(0.35,0.06,0.35,mBlack,10.2,0.85,-3.75);
+// Keyboard
+box(0.03,0.02,0.75,mat(0x777777,0.6,0.3),10.2,0.87,-4.2);
+// Office chair
+box(0.75,0.09,0.75,mFabricG,10.2,0.82,-5.2);
+box(0.75,0.85,0.12,mFabricG,10.2,1.27,-4.82);
+cyl(0.065,0.065,0.82,8,mMetal,10.2,0.41,-5.2);
+for(let a=0;a<5;a++){
+  const ang=a/5*Math.PI*2;
+  const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,0.75,8),mMetal);
+  leg.position.set(10.2+Math.cos(ang)*0.38,0.065,-5.2+Math.sin(ang)*0.38);
+  leg.rotation.set(Math.sin(ang)*0.35,0,-Math.cos(ang)*0.35);
+  scene.add(leg);
+  sph(0.055,8,mBlack,10.2+Math.cos(ang)*0.75,0.07,-5.2+Math.sin(ang)*0.75);
+}
+
+// ─── 13. TROPHY CABINET (right wall) ─────────────────────────────────────────
+box(2.2,3.8,0.55,mWoodDk,10.0,1.9,8.5);
+box(2.0,3.6,0.1,mGlassDk,10.0,1.9,8.26);
+// Shelves
+for(let i=0;i<3;i++) box(1.9,0.06,0.48,mWoodLt,10.0,0.6+i*1.2,8.5);
+// Trophies
+for(let row=0;row<3;row++){
+  for(let col=-1;col<=1;col++){
+    const tx=9.4+col*0.55, ty=0.82+row*1.2, tz=8.52;
+    cyl(0.05,0.08,0.1,12,mGold,tx,ty,tz);
+    cyl(0.04,0.04,0.2,8,mGold,tx,ty+0.15,tz);
+    cyl(0.1,0.03,0.05,12,mGold,tx,ty+0.27,tz);
+    sph(0.08,10,mGold,tx,ty+0.35,tz);
+  }
+}
+// Cabinet top
+box(2.3,0.15,0.6,mWoodDk,10.0,3.87,8.5);
+
+// ─── 14. GRANDFATHER CLOCK (left wall) ───────────────────────────────────────
+// Body
+box(0.65,2.8,0.5,mClock,-10.8,1.4,-9.0);
+// Hood
+box(0.72,0.7,0.55,mClock,-10.8,3.15,-9.0);
+// Glass door
+box(0.48,1.8,0.08,mGlass,-10.8,1.4,-8.77);
+// Clock face
+cyl(0.28,0.28,0.06,24,mIvory,-10.8,2.6,-8.77);
+// Clock hands
+box(0.02,0.22,0.02,mBlack,-10.8,2.66,-8.74,0,0,0.5);
+box(0.02,0.18,0.02,mBlack,-10.8,2.65,-8.74,0,0,1.0);
+// Pendulum
+box(0.04,0.9,0.04,mWoodDk,-10.8,1.5,-8.85);
+cyl(0.1,0.1,0.04,16,mGold,-10.8,1.1,-8.85);
+// Base
+box(0.75,0.3,0.55,mWoodDk,-10.8,0.15,-9.0);
+// Crown
+box(0.78,0.2,0.58,mClock,-10.8,3.55,-9.0);
+// Finials
+for(const px of[-11.12,-10.48]) sph(0.07,8,mGold,px,3.72,-9.0);
+
+// ─── 15. DECORATIVE PILLARS (entrance area) ──────────────────────────────────
+function pillar(x,z){
+  // Base
+  box(0.7,0.3,0.7,mPillarB,x,0.15,z);
+  // Shaft
+  cyl(0.22,0.25,4.5,20,mPillar,x,2.55,z);
+  // Capital
+  box(0.65,0.25,0.65,mPillarB,x,4.92,z);
+  box(0.72,0.15,0.72,mPillarB,x,5.08,z);
+}
+pillar(-7, 10); pillar(7, 10);
+pillar(-7,-10); pillar(7,-10);
+
+// ─── 16. FLOOR LAMPS (3 locations) ───────────────────────────────────────────
+function floorLamp(x,z,col=0xffe8a0){
+  cyl(0.1,0.15,0.06,16,mGold,x,0.03,z);
+  cyl(0.025,0.025,2.3,8,mGold,x,1.18,z);
+  cyl(0.28,0.2,0.45,20,mLampShd,x,2.55,z);
+  const base=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,12),mat(col,0.1,0,col,1.2));
+  base.position.set(x,2.33,z); scene.add(base);
+}
+floorLamp(-8,  -4);
+floorLamp(11,   5);
+floorLamp( 5,  -8);
+
+// ─── 17. POTTED PLANTS (5 locations) ─────────────────────────────────────────
+function plant(x,z,sc=1){
+  cyl(0.15*sc,0.2*sc,0.4*sc,12,mPot,x,0.2*sc,z);
+  cyl(0.12*sc,0.15*sc,0.1*sc,12,mat(0x3a1808),x,0.42*sc,z);
+  sph(0.3*sc,12,mPlant,x,0.65*sc,z);
+  sph(0.22*sc,12,mPlant2,x+0.18*sc,0.72*sc,z+0.05*sc);
+  sph(0.2*sc,12,mPlant,x-0.15*sc,0.68*sc,z-0.1*sc);
+  sph(0.15*sc,12,mPlant2,x+0.05*sc,0.85*sc,z+0.18*sc);
+}
+plant(-10.5, 12,  1.4);
+plant( 10.5, 12,  1.3);
+plant(-10.5,-12,  1.2);
+plant( 10.5,-12,  1.2);
+plant(  0.0, 12,  1.0);
+
+// Tall decorative plant in corner
+cyl(0.18,0.22,0.55,14,mPot,-10.8,0.28,12);
+cyl(0.08,0.08,2.5,8,mPlant,-10.8,1.53,12);
+for(let i=0;i<6;i++){
+  const a=i/6*Math.PI*2;
+  box(0.06,0.8,0.04,mPlant,-10.8+Math.cos(a)*0.25,1.5+i*0.2,12+Math.sin(a)*0.25,0,0,a);
+}
+sph(0.25,12,mPlant,-10.8,2.85,12);
+
+// ─── 18. WALL PAINTINGS (back wall + side walls) ──────────────────────────────
+const paintData=[
+  // [x,y,z,  w,h,  color,  wall_axis]
+  [-11.82, 3.0, -6,  0.1, 1.5, 2.0, 0x2a4a6e],
+  [-11.82, 3.0,  2,  0.1, 1.5, 2.0, 0x6e2a2a],
+  [-11.82, 3.0, 10,  0.1, 1.5, 2.0, 0x2a6e4a],
+  [ 11.82, 3.0, -6,  0.1, 1.5, 2.0, 0x6e6e2a],
+  [ 11.82, 3.0,  2,  0.1, 1.5, 2.0, 0x4a2a6e],
+  [ 11.82, 3.0,  8,  0.1, 1.5, 2.0, 0x1a4a5a],
+  [  -5.0, 3.2, -13.88, 2.5, 0.1, 1.8, 0x3a1a5a],
+  [   0.0, 3.2, -13.88, 2.5, 0.1, 1.8, 0x5a3a1a],
+  [   5.0, 3.2, -13.88, 2.5, 0.1, 1.8, 0x1a5a3a],
+];
+for(const[px,py,pz,fw,fh,fd,col] of paintData){
+  box(fw+0.05,fh+0.1,fd+0.05,mPainting,px,py,pz);
+  const inner=new THREE.MeshStandardMaterial({color:col,roughness:0.9,emissive:col,emissiveIntensity:0.08});
+  box(fw+0.02,fh-0.1,fd-0.05,inner,px,py,pz);
+}
+
+// ─── 19. WINDOWS (right wall, 3 large) ───────────────────────────────────────
+for(const wz of[-8, 0, 8]){
+  box(0.22,3.0,2.2,mWoodDk,RW/2-0.1,2.5,wz);
+  box(0.15,2.8,2.0,mGlass,RW/2-0.1,2.5,wz);
+  // Frame dividers
+  box(0.2,3.0,0.08,mWoodDk,RW/2-0.1,2.5,wz);
+  box(0.2,0.08,2.2,mWoodDk,RW/2-0.1,2.5,wz);
+  // Curtains
+  box(0.12,3.2,0.6,mFabricR,RW/2-0.1,2.6,wz-1.35);
+  box(0.12,3.2,0.6,mFabricR,RW/2-0.1,2.6,wz+1.35);
+  // Curtain rod
+  cyl(0.03,0.03,3.0,8,mGold,RW/2-0.1,4.1,wz, 0,0,Math.PI/2);
+}
+
+// ─── 20. ADDITIONAL SIDE TABLE + LAMP ────────────────────────────────────────
+box(0.7,0.06,0.7,mWoodLt,-5.5,0.65,-9.5);
+for(const[px,pz]of[[-5.2,-9.2],[-5.2,-9.8],[-5.8,-9.2],[-5.8,-9.8]])
+  box(0.05,0.65,0.05,mWoodDk,px,0.33,pz);
+// Table lamp on it
+cyl(0.1,0.12,0.04,12,mGold,-5.5,0.69,-9.5);
+cyl(0.02,0.02,0.45,8,mGold,-5.5,0.92,-9.5);
+cyl(0.18,0.12,0.28,16,mLampShd,-5.5,1.22,-9.5);
+const tableLampLight=new THREE.PointLight(0xffcc88,1.0,5);
+tableLampLight.position.set(-5.5,1.1,-9.5); scene.add(tableLampLight);
+
+// ─── Input & Controls ─────────────────────────────────────────────────────────
+const keys={};
+let yaw=0, pitch=0, locked=false;
+
+document.addEventListener('keydown', e=>{ keys[e.code]=true; e.preventDefault(); });
+document.addEventListener('keyup',   e=>{ keys[e.code]=false; });
+
+document.addEventListener('mousemove', e=>{
+  if(!locked) return;
+  yaw   -= e.movementX * 0.0022;
+  pitch -= e.movementY * 0.0022;
+  pitch = Math.max(-1.3, Math.min(1.3, pitch));
+});
+
+document.addEventListener('pointerlockchange', ()=>{
+  locked = document.pointerLockElement === renderer.domElement;
+});
+
+const overlay = document.getElementById('overlay');
+overlay.addEventListener('click', ()=>{
+  renderer.domElement.requestPointerLock();
+  overlay.style.opacity='0';
+  setTimeout(()=>overlay.style.display='none', 500);
+});
+document.addEventListener('keydown', e=>{
+  if(e.code==='Escape' && locked){
+    overlay.style.display='flex';
+    setTimeout(()=>overlay.style.opacity='1',10);
+  }
+});
+
+// ─── Movement ─────────────────────────────────────────────────────────────────
+const BOUNDS_X = RW/2 - 0.6;
+const BOUNDS_Z = RD/2 - 0.6;
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+
+const dir = new THREE.Vector3();
+const euler = new THREE.Euler(0,0,0,'YXZ');
+
+// ─── Animation ────────────────────────────────────────────────────────────────
+let prevTime = performance.now();
+let frameCount=0, fpsTimer=0;
+const fpsEl = document.getElementById('fps');
+const posEl = document.getElementById('pos');
+let walkTime = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min((now-prevTime)/1000, 0.05);
+  prevTime = now;
+
+  frameCount++; fpsTimer+=dt;
+  if(fpsTimer>=0.5){
+    fpsEl.textContent=Math.round(frameCount/fpsTimer);
+    frameCount=0; fpsTimer=0;
+  }
+
+  euler.set(pitch,yaw,0);
+  camera.quaternion.setFromEuler(euler);
+
+  if(locked){
+    const speed=(keys['ShiftLeft']||keys['ShiftRight'])?7.5:4.0;
+    dir.set(0,0,0);
+    if(keys['KeyW']||keys['ArrowUp'])    dir.z-=1;
+    if(keys['KeyS']||keys['ArrowDown'])  dir.z+=1;
+    if(keys['KeyA']||keys['ArrowLeft'])  dir.x-=1;
+    if(keys['KeyD']||keys['ArrowRight']) dir.x+=1;
+
+    const moving = dir.lengthSq()>0;
+    if(moving){
+      dir.normalize();
+      dir.applyQuaternion(camera.quaternion);
+      dir.y=0; dir.normalize();
+      camera.position.addScaledVector(dir,speed*dt);
+      walkTime+=dt*speed*2.8;
+    }
+
+    camera.position.x = clamp(camera.position.x,-BOUNDS_X,BOUNDS_X);
+    camera.position.z = clamp(camera.position.z,-BOUNDS_Z,BOUNDS_Z);
+    camera.position.y = 1.72 + (moving ? Math.sin(walkTime)*0.045 : 0);
+
+    posEl.textContent=`${camera.position.x.toFixed(1)}, ${camera.position.z.toFixed(1)}`;
+  }
+
+  // Fire flicker
+  const t=now*0.001;
+  fireLight.intensity = 2.0 + Math.sin(t*5.1)*0.4 + Math.sin(t*8.7)*0.25;
+  fireLight.color.setHSL(0.05+Math.sin(t*3)*0.015, 1.0, 0.5);
+
+  // Chandelier gentle sway
+  chanLight.intensity = 3.5 + Math.sin(t*0.4)*0.15;
+  chanLight2.intensity = 2.0 + Math.sin(t*0.35)*0.1;
+  chanLight3.intensity = 2.0 + Math.sin(t*0.45)*0.1;
+
+  // Candle flicker
+  candleLight.intensity = 0.8 + Math.sin(t*6.3)*0.15 + Math.sin(t*9.7)*0.08;
+
+  // Table lamp subtle pulse
+  tableLampLight.intensity = 1.0 + Math.sin(t*0.8)*0.08;
+
+  renderer.render(scene,camera);
+}
+
+animate();
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
