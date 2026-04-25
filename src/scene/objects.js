@@ -129,8 +129,8 @@ export function updateObjectState(mesh, newState) {
       case STATES.ASSESSMENT_HOVER:
         mat.color.lerpColors(new THREE.Color(m.userData._origColor), new THREE.Color(0x333333), 0.4);
         mat.emissive.setHex(0x8b5cf6); // violet glow
-        mat.emissiveIntensity = 0.5;
-        mat.opacity = 0.8;
+        mat.emissiveIntensity = 0.3; // decreased from 0.5
+        mat.opacity = 0.15; // decreased from 0.8
         mat.transparent = true;
         break;
 
@@ -151,8 +151,9 @@ export function updateObjectState(mesh, newState) {
       case STATES.REVIEW:
         mat.color.setHex(m.userData._origColor);
         mat.emissive.setHex(0x4488ff);
-        mat.emissiveIntensity = 0.45;
-        if (!mat._wasTransparent) { mat.opacity = 1; mat.transparent = false; }
+        mat.emissiveIntensity = 0.25; // decreased from 0.45
+        mat.opacity = 0.6; // added transparency
+        mat.transparent = true;
         break;
     }
   });
@@ -171,5 +172,6 @@ export function assignConceptsToMeshes(meshMap, conceptsObj) {
     mesh.userData.theme = data.theme;
     mesh.userData.importance = data.importance;
     mesh.userData.teaching_context = data.teaching_context || '';
+    mesh.userData.assignedQuestion = data.socratic_question || '';
   });
 }

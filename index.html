@@ -72,6 +72,7 @@
 
       <!-- AI Socratic question (Part 6) -->
       <div id="ai-question" class="hidden"></div>
+      <div id="assessment-hint" class="hidden" style="font-size: 14px; color: var(--gold); margin-bottom: 12px; font-style: italic;"></div>
 
       <!-- User typed answer (Part 6) -->
       <input id="user-answer" type="text" class="hidden" placeholder="Type your answer..." />
@@ -102,8 +103,18 @@
   <div id="crosshair"></div>
 
   <div id="loading" class="hidden">
-    <div class="loading-spinner"></div>
-    <p>🤖 AI is building your learning palace...</p>
+    <div class="bucket-container">
+      <svg viewBox="0 0 655 352" class="bucket-svg">
+        <path d="M535.59 78.7427L487.973 42.8776L558.738 13.9516C562.902 12.2494 564.984 11.3984 567.143 11.5597C569.301 11.7211 571.233 12.8723 575.098 15.1747L590.22 24.1832C603.923 32.347 610.775 36.4289 610.372 42.0779C609.97 47.7269 602.609 50.7964 587.887 56.9354L535.59 78.7427Z" class="bucket-glass" />
+        <path d="M123.116 79.1145L171.548 42.8776L97.2715 12.5164C94.8305 11.5186 93.61 11.0197 92.3446 11.1143C91.0793 11.2089 89.9465 11.8837 87.681 13.2334L56.155 32.0149C48.1832 36.7641 44.1973 39.1386 44.4205 42.4378C44.6438 45.737 48.9132 47.553 57.4522 51.1849L123.116 79.1145Z" class="bucket-glass" />
+        <path d="M487.973 42.8774L171.548 42.8775L123.116 79.1144L535.59 78.7424L487.973 42.8774Z" fill="white" fill-opacity="0.1" />
+        <path d="M74.6011 164.033L123.116 79.1138L535.59 78.7419L581.532 164.469C588.006 176.55 591.243 182.59 588.568 187.06C585.892 191.529 579.039 191.529 565.333 191.529H90.5591C76.4759 191.529 69.4343 191.529 66.7781 186.953C64.1219 182.376 67.615 176.262 74.6011 164.033Z" class="bucket-glass" />
+      </svg>
+      <div class="chips-wrapper" id="chips-wrapper">
+        <!-- Chips will be injected here by JS -->
+      </div>
+    </div>
+    <p class="loading-status" id="loading-status">Reading your notes...</p>
   </div>
 
   <!-- ── Game Over Panel ──────────────────────────────────────── -->
@@ -111,7 +122,10 @@
     <div class="game-over-card">
       <h2>Game Over</h2>
       <p>The memory palace has gone dark. Too many mistakes!</p>
-      <button id="restart-btn" class="primary-btn">Restart Assessment</button>
+      <div class="game-over-controls" style="display:flex; gap:16px; justify-content:center;">
+        <button id="study-again-btn" class="primary-btn">Study Again</button>
+        <button id="quit-btn" class="secondary-btn">Quit to Home</button>
+      </div>
     </div>
   </div>
 

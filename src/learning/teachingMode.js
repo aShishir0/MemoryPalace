@@ -21,6 +21,13 @@ export const learnedConcepts = new Set();
 // ── Entry Point ───────────────────────────────────────────────────────────────
 export function startTeachingMode() {
   teachingPanel.classList.remove('hidden');
+  teachingPanel.style.display = ''; // Revert to css default
+  
+  // Unlock controls so user can click the TV buttons!
+  if (store.controls) {
+    store.controls.unlock();
+  }
+
   currentIndex = 0;
   learnedConcepts.clear();
 
@@ -32,6 +39,7 @@ export function startTeachingMode() {
   if (store.palaceData.teaching_sequence.length === 0) {
     console.error('No valid teaching slots found — LLM may have returned wrong object names.');
     teachingPanel.classList.add('hidden');
+    teachingPanel.style.display = 'none';
     return;
   }
 
@@ -116,6 +124,8 @@ function setupEventListeners() {
 // ── End Teaching Mode ─────────────────────────────────────────────────────────
 function endTeachingMode() {
   teachingPanel.classList.add('hidden');
+  teachingPanel.style.display = ''; 
+
   store.tutorialComplete = true;
 
   // Reset all objects to LOCKED so the player has to recall them in assessment

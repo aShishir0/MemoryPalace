@@ -243,13 +243,65 @@ body {
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+#teaching-panel.is-3d-tv {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  width: 1800px;
+  max-width: none;
+  height: 846px;
+  animation: none;
+  background: var(--bg-glass);
+  border: 4px solid var(--border-gold);
+  border-radius: 20px;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+}
+
+#teaching-panel.is-3d-tv .teaching-card {
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#teaching-panel.is-3d-tv h2 {
+  font-size: 80px;
+  margin-bottom: 40px;
+}
+
+#teaching-panel.is-3d-tv p {
+  font-size: 40px;
+  line-height: 1.6;
+}
+
+#teaching-panel.is-3d-tv .concept-meta {
+  font-size: 32px;
+  margin-bottom: 30px;
+}
+
+#teaching-panel.is-3d-tv .teaching-controls {
+  margin-top: auto;
+}
+
+#teaching-panel.is-3d-tv button {
+  font-size: 36px;
+  padding: 20px 40px;
+}
+
 .teaching-card {
   background: var(--bg-glass);
   border: 1.5px solid var(--border-gold);
   border-radius: var(--radius);
-  padding: 22px 26px;
-  backdrop-filter: blur(24px);
+  padding: 28px 32px; /* Increased padding */
+  backdrop-filter: blur(28px);
   box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.04);
+  max-width: 520px; /* Limit width for readability */
 }
 
 .teaching-header {
@@ -406,9 +458,9 @@ body {
   background: var(--bg-glass);
   border: 1.5px solid rgba(139,92,246,0.35);
   border-radius: var(--radius);
-  padding: 22px 26px;
+  padding: 28px 32px; /* Increased padding */
   text-align: center;
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(28px);
   box-shadow: var(--shadow), 0 4px 30px rgba(139,92,246,0.08);
 }
 
@@ -472,13 +524,14 @@ body {
 
 /* AI Tutor inputs */
 #ai-question {
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.7;
   color: var(--violet-light);
-  margin-bottom: 12px;
-  min-height: 36px;
+  margin: 16px 0; /* More spacing */
+  min-height: 40px;
   font-style: italic;
-  font-weight: 300;
+  font-weight: 400;
+  padding: 0 10px;
 }
 
 #user-answer {
@@ -751,4 +804,123 @@ body {
   font-size: 16px;
   color: var(--text-dim);
   margin-bottom: 24px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PREMIUM BUCKET LOADING SCREEN (VANILLA REPLICA)
+   ══════════════════════════════════════════════════════════════════ */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: radial-gradient(circle at center, #0f0f1a 0%, #05050a 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.bucket-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 655/352;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bucket-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.5));
+}
+
+.bucket-glass {
+  fill: rgba(255, 255, 255, 0.03);
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 1;
+}
+
+.chips-wrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.loading-chip {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  padding: 12px 20px;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 260px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  animation: chipFlow 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  opacity: 0;
+}
+
+.chip-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(139, 92, 246, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #a78bfa;
+}
+
+.chip-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.chip-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.chip-desc {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
+
+@keyframes chipFlow {
+  0% {
+    transform: translateY(-80px) scale(0.9);
+    opacity: 0;
+  }
+  20%, 80% {
+    transform: translateY(0) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.loading-status {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  color: var(--gold-light);
+  letter-spacing: 1px;
+  text-align: center;
+  margin-top: 10px;
+  opacity: 0.8;
 }

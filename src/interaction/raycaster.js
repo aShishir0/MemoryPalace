@@ -25,9 +25,14 @@ export function setupRaycaster(camera, meshMap, onHover, onLeave) {
 
     if (hits.length > 0) {
       const root = findSlotRoot(hits[0].object);
-      if (root && root !== lastHoveredGroup) {
-        lastHoveredGroup = root;
-        onHover(root);
+      if (root) {
+        if (root !== lastHoveredGroup) {
+          lastHoveredGroup = root;
+          onHover(root, hits[0].distance);
+        } else {
+          // Keep updating distance even if same object is hovered
+          onHover(root, hits[0].distance);
+        }
       }
     } else {
       if (lastHoveredGroup) {
@@ -42,7 +47,7 @@ export function setupRaycaster(camera, meshMap, onHover, onLeave) {
     raycaster.setFromCamera(center, camera);
     const hits = raycaster.intersectObjects(groups, true);
     if (hits.length > 0) {
-      return findSlotRoot(hits[0].object);
+      return { mesh: findSlotRoot(hits[0].object), distance: hits[0].distance };
     }
     return null;
   }

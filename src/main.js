@@ -8,7 +8,7 @@ import { setupRaycaster } from './interaction/raycaster.js';
 import { showTooltip, hideTooltip } from './interaction/tooltip.js';
 import { setupUploadPanel } from './ui/uploadPanel.js';
 import { startTeachingMode } from './learning/teachingMode.js';
-import { startAssessmentMode, markSelfRecalled } from './learning/assessmentMode.js';
+import { startAssessmentMode, markSelfRecalled, cancelAssessment } from './learning/assessmentMode.js';
 import { highlightDueObjects, loadSpacedRep } from './learning/spacedRepetition.js';
 import { startAmbient, stopAmbient, stopSpeech } from './audio/soundManager.js';
 import { updateHUD } from './ui/hud.js';
@@ -46,18 +46,27 @@ setupUploadPanel(async (sourceText) => {
     const raycasterInstance = setupRaycaster(
       camera,
       meshMap,
-      (mesh) => {
-        // Update store with currently hovered slot
-        store.assessment.currentHoveredSlot = mesh.userData.slotName;
+      (mesh, distance) => {
+        const MAX_INTERACTION_DIST = 4; // Reduced distance for glow
+        const isNear = distance < MAX_INTERACTION_DIST;
         
-        // In assessment mode, test objects glow when hovered
-        if (store.mode === 'assessment' && store.assessment.subset.includes(mesh.userData.slotName)) {
-          if (mesh.userData.state === STATES.LOCKED) {
-            updateObjectState(mesh, STATES.ASSESSMENT_HOVER);
-          }
+        // Update store with currently hovered slot (only if near)
+        if (isNear) {
+          store.assessment.currentHoveredSlot = mesh.userData.slotName;
+          showTooltip(mesh, store.mode);
+        } else {
+          hideTooltip();
+          store.assessment.currentHoveredSlot = null;
         }
         
-        showTooltip(mesh, store.mode);
+        // In assessment mode, test objects glow when hovered AND near
+        if (store.mode === 'assessment' && store.assessment.subset.includes(mesh.userData.slotName)) {
+          if (isNear && mesh.userData.state === STATES.LOCKED) {
+            updateObjectState(mesh, STATES.ASSESSMENT_HOVER);
+          } else if (!isNear && mesh.userData.state === STATES.ASSESSMENT_HOVER) {
+            updateObjectState(mesh, STATES.LOCKED);
+          }
+        }
       },
       () => {
         hideTooltip();
@@ -73,7 +82,24 @@ setupUploadPanel(async (sourceText) => {
         }
       }
     );
-    addFrameCallback(raycasterInstance.update);
+    addFrameCallback((delta) => {
+      raycasterInstance.update();
+      
+      // Auto-close assessment if user walks away
+      const panel = document.getElementById('assessment-panel');
+      if (panel && !panel.classList.contains('hidden')) {
+        const activeSlot = store.assessment.activeSlot;
+        if (activeSlot) {
+          const mesh = store.meshMap[activeSlot];
+          if (mesh) {
+            const dist = camera.position.distanceTo(mesh.position);
+            if (dist > 6) { // Reduced threshold for better responsiveness
+              cancelAssessment();
+            }
+          }
+        }
+      }
+    });
 
     // 5. Show 3D canvas and UI overlays
     loading.classList.add('hidden');
@@ -89,21 +115,31 @@ setupUploadPanel(async (sourceText) => {
     store.mode = 'exploring';
 
     canvas.addEventListener('mousedown', () => {
-      const interactedMesh = raycasterInstance.handleInteraction();
-      if (!interactedMesh) return;
+      const hit = raycasterInstance.handleInteraction();
+      if (!hit) return;
 
-      const slotName = interactedMesh.userData.slotName;
+      const slotName = hit.mesh.userData.slotName;
+      const MAX_CLICK_DIST = 5; // Allow clicking from slightly further than glow but still close
 
-      // Exploring mode -> Tutorial start
+      // Exploring mode -> Tutorial start (allow clicking from anywhere)
       if (store.mode === 'exploring' && slotName === 'fireplace' && !store.tutorialComplete) {
         console.log('Fireplace interacted! Starting tutorial...');
         store.mode = 'teaching';
         startTeachingMode();
+        return;
       }
 
-      // Assessment mode -> Click to test
+      // Assessment mode -> Click to test (requires being near)
       if (store.mode === 'assessment' && store.onObjectClick) {
-        store.onObjectClick(slotName);
+        if (hit.distance <= MAX_CLICK_DIST) {
+          store.onObjectClick(slotName);
+        } else {
+          // Tell user to get closer
+          const tooltip = document.getElementById('tooltip');
+          tooltip.innerHTML = 'Get closer to interact';
+          tooltip.classList.remove('hidden');
+          setTimeout(() => tooltip.classList.add('hidden'), 1500);
+        }
       }
     });
 
@@ -116,7 +152,7 @@ setupUploadPanel(async (sourceText) => {
 
     // 10. Click canvas to lock pointer for first-person controls
     canvas.addEventListener('click', () => {
-      if (!controls.isLocked) {
+      if (!controls.isLocked && store.mode !== 'teaching' && store.mode !== 'assessment_result') {
         controls.lock();
       }
     });

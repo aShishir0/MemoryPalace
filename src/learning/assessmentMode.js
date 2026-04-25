@@ -39,6 +39,8 @@ export function startAssessmentMode() {
   store.assessment.total  = store.assessment.subset.length;
   store.assessment.score  = 0;
   store.assessment.mistakes = 0;
+  store.assessment.awaitingAnswer = false;
+  store.assessment.currentHoveredSlot = null;
 
   // Load saved spaced rep data
   loadSpacedRep();
@@ -59,6 +61,17 @@ export function startAssessmentMode() {
     store.sceneLights.chanLight.intensity = 3.5;
   }
 
+  // Reset UI elements
+  if (submitAnswerBtn) {
+    submitAnswerBtn.disabled = false;
+    submitAnswerBtn.textContent = 'Submit Answer';
+    submitAnswerBtn.classList.add('hidden');
+  }
+  if (userAnswerEl) {
+    userAnswerEl.value = '';
+    userAnswerEl.classList.add('hidden');
+  }
+
   setupAssessmentListeners();
 }
 
@@ -74,6 +87,7 @@ function setupAssessmentListeners() {
     if (!mesh?.userData.hasContent || mesh.userData.revealed) return;
 
     store.assessment.awaitingAnswer     = true;
+    store.assessment.activeSlot         = slotName;
     store.assessment.currentHoveredSlot = slotName;
 
     // Show panel and loading state
@@ -86,17 +100,49 @@ function setupAssessmentListeners() {
 
     try {
       const { concept, detail, mnemonic } = mesh.userData;
-      const question = await askConceptQuestion(concept, detail, mnemonic);
+      
+      // Fetch pre-generated question or generate if missing (fallback)
+      let question = mesh.userData.assignedQuestion;
+      if (!question) {
+        question = await askConceptQuestion(concept, detail, mnemonic);
+        mesh.userData.assignedQuestion = question;
+      }
 
       if (aiQuestionEl) aiQuestionEl.textContent = `💬 ${question}`;
+      
+      // Show mnemonic as hint when getting the question
+      const hintEl = document.getElementById('assessment-hint');
+      if (hintEl && mnemonic) {
+        hintEl.textContent = `💡 Hint: ${mnemonic}`;
+        hintEl.classList.remove('hidden');
+      }
+
       speak(question);
 
-      if (userAnswerEl)  { userAnswerEl.value = ''; userAnswerEl.classList.remove('hidden'); userAnswerEl.focus(); }
+      if (userAnswerEl)  { 
+        userAnswerEl.value = ''; 
+        userAnswerEl.classList.remove('hidden'); 
+        userAnswerEl.focus(); 
+        
+        // Ensure only one listener is attached
+        userAnswerEl.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (submitAnswerBtn && !submitAnswerBtn.disabled) {
+              submitAnswerBtn.click();
+            }
+          }
+        };
+      }
       if (submitAnswerBtn) submitAnswerBtn.classList.remove('hidden');
 
-    } catch {
+    } catch (error) {
+      console.error("Error generating question:", error);
+      if (aiQuestionEl) {
+        aiQuestionEl.textContent = "Error generating question. Check your internet or API key.";
+        aiQuestionEl.classList.remove('hidden');
+      }
       // API failed — fall back to simple reveal button
-      if (aiQuestionEl) aiQuestionEl.classList.add('hidden');
       revealBtn.classList.remove('hidden');
       store.assessment.awaitingAnswer = false;
     }
@@ -127,13 +173,37 @@ function setupAssessmentListeners() {
         }
 
         // Show AI feedback
-        assessmentResult.innerHTML = `
-          <strong>${result.correct ? '✓ Well done!' : '✗ Not quite (Hint provided)'}</strong><br>
-          ${result.feedback}<br><br>
-          <em>${mesh.userData.concept}: ${mesh.userData.detail}</em>
-        `;
+        let feedbackHTML = `<strong>${result.correct ? '✓ Well done!' : '✗ Not quite'}</strong><br>${result.feedback}`;
+        if (result.correct) {
+          feedbackHTML += `<br><br><em><strong>Answer:</strong> ${mesh.userData.concept} - ${mesh.userData.detail}</em>`;
+        } else {
+          feedbackHTML += `
+            <br><br>
+            <button id="see-answer-btn" class="secondary-btn" style="width:100%; margin-top:8px; font-size: 12px; padding: 6px;">
+              View Correct Answer
+            </button>
+            <br><small>Try again, or click Next to skip.</small>
+          `;
+        }
+        assessmentResult.innerHTML = feedbackHTML;
         assessmentResult.className = result.correct ? 'correct' : 'incorrect';
         assessmentResult.classList.remove('hidden');
+
+        // Attach listener for the reveal button if it exists
+        const seeAnswerBtn = document.getElementById('see-answer-btn');
+        if (seeAnswerBtn) {
+          seeAnswerBtn.onclick = () => {
+            const answerReveal = document.createElement('div');
+            answerReveal.style.marginTop = '12px';
+            answerReveal.style.padding = '10px';
+            answerReveal.style.borderLeft = '3px solid var(--gold)';
+            answerReveal.style.background = 'rgba(212,175,55,0.1)';
+            answerReveal.style.fontSize = '13px';
+            answerReveal.innerHTML = `<strong>Correct Answer:</strong> ${mesh.userData.concept}<br><small>${mesh.userData.detail}</small>`;
+            assessmentResult.appendChild(answerReveal);
+            seeAnswerBtn.classList.add('hidden');
+          };
+        }
 
         // Audio feedback
         playTone(result.correct ? 'correct' : 'incorrect');
@@ -160,6 +230,10 @@ function setupAssessmentListeners() {
         // Reset question UI
         if (aiQuestionEl)  aiQuestionEl.classList.add('hidden');
         if (userAnswerEl)  userAnswerEl.classList.add('hidden');
+        
+        const hintEl = document.getElementById('assessment-hint');
+        if (hintEl) hintEl.classList.add('hidden');
+
         submitAnswerBtn.classList.add('hidden');
         submitAnswerBtn.disabled    = false;
         submitAnswerBtn.textContent = 'Submit Answer';
@@ -191,20 +265,34 @@ function setupAssessmentListeners() {
 
   // ── Next object ───────────────────────────────────────────────
   nextObjectBtn.onclick = () => {
-    assessmentResult.classList.add('hidden');
-    nextObjectBtn.classList.add('hidden');
-    revealBtn.classList.remove('hidden');
-    store.assessment.currentHoveredSlot = null;
-    store.assessment.awaitingAnswer     = false;
-    assessmentPanel.classList.add('hidden');
+    cancelAssessment();
   };
 
-  // ── Restart Assessment ────────────────────────────────────────
-  const restartBtn = document.getElementById('restart-btn');
-  if (restartBtn) {
-    restartBtn.onclick = () => {
+  // ── Game Over Options ────────────────────────────────────────
+  const studyAgainBtn = document.getElementById('study-again-btn');
+  if (studyAgainBtn) {
+    studyAgainBtn.onclick = () => {
       document.getElementById('game-over').classList.add('hidden');
-      startAssessmentMode();
+      
+      // Reset lights
+      if (store.sceneLights) {
+        if (store.sceneLights.chanLight) store.sceneLights.chanLight.intensity = 3.5;
+        if (store.sceneLights.ambient) store.sceneLights.ambient.intensity = 0.25;
+        if (store.sceneLights.winLight) store.sceneLights.winLight.intensity = 0.5;
+      }
+      
+      // Restart teaching mode
+      store.mode = 'teaching';
+      import('./teachingMode.js').then(module => {
+        module.startTeachingMode();
+      });
+    };
+  }
+
+  const quitBtn = document.getElementById('quit-btn');
+  if (quitBtn) {
+    quitBtn.onclick = () => {
+      window.location.reload(); // Simple way to reset to the start
     };
   }
 }
@@ -212,19 +300,25 @@ function setupAssessmentListeners() {
 // ── Light Dimming & Game Over Logic ──────────────────────────────────────────
 function dimLightsForMistake(mistakes) {
   if (!store.sceneLights) return;
-  const { chanLight, ambient, winLight } = store.sceneLights;
+  const { chanLight, ambient, winLight, fireLight, barLight } = store.sceneLights;
   
   if (mistakes === 1) {
     if (chanLight) chanLight.intensity = 1.5;
     if (ambient) ambient.intensity = 0.15;
+    if (fireLight) fireLight.intensity = 1.5;
+    if (barLight) barLight.intensity = 0.8;
   } else if (mistakes === 2) {
     if (chanLight) chanLight.intensity = 0.5;
     if (ambient) ambient.intensity = 0.05;
     if (winLight) winLight.intensity = 0.1;
+    if (fireLight) fireLight.intensity = 0.8;
+    if (barLight) barLight.intensity = 0.4;
   } else if (mistakes >= 3) {
-    if (chanLight) chanLight.intensity = 0;
+    if (chanLight) chanLight.intensity = 0.1;
     if (ambient) ambient.intensity = 0;
     if (winLight) winLight.intensity = 0;
+    if (fireLight) fireLight.intensity = 0.2;
+    if (barLight) barLight.intensity = 0.1;
   }
 }
 
@@ -237,6 +331,34 @@ function triggerGameOver() {
   
   // Unlock controls to free the mouse
   if (store.controls) store.controls.unlock();
+}
+
+/**
+ * Resets the assessment UI if the player walks away or clicks next
+ */
+export function cancelAssessment() {
+  assessmentResult.classList.add('hidden');
+  nextObjectBtn.classList.add('hidden');
+  revealBtn.classList.remove('hidden');
+  
+  const hintEl = document.getElementById('assessment-hint');
+  if (hintEl) hintEl.classList.add('hidden');
+
+  if (aiQuestionEl) aiQuestionEl.classList.add('hidden');
+  if (userAnswerEl) {
+    userAnswerEl.value = '';
+    userAnswerEl.classList.add('hidden');
+  }
+  if (submitAnswerBtn) {
+    submitAnswerBtn.disabled = false;
+    submitAnswerBtn.textContent = 'Submit Answer';
+    submitAnswerBtn.classList.add('hidden');
+  }
+
+  store.assessment.activeSlot         = null;
+  store.assessment.currentHoveredSlot = null;
+  store.assessment.awaitingAnswer     = false;
+  assessmentPanel.classList.add('hidden');
 }
 
 // ── Reveal + Score a Concept ──────────────────────────────────────────────────

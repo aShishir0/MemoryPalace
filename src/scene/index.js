@@ -1,4 +1,3 @@
-// src/scene/index.js
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { buildRoom }      from './room.js';
@@ -28,7 +27,7 @@ export function initScene(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
 
-  // ── Room + Objects + Lighting ──────────────────────────────────
+  // ── Room + Objects + Lighting ────────────────────────
   buildRoom(scene);
   const meshMap = createObjects(scene);
   const lights = setupLighting(scene);

@@ -70,11 +70,12 @@ Return ONLY valid JSON with no markdown fences, no preamble, matching this schem
   "objects": {
     "sofa": {
       "concept": "Main concept name",
-      "detail": "2-3 sentence explanation for teaching mode",
+      "detail": "Detailed explanation for teaching mode. Provide exactly 3 concise bullet points summarizing the concept.",
       "mnemonic": "Vivid memory association with sofa",
       "theme": "Which theme this belongs to",
       "importance": "high|medium|low",
-      "teaching_context": "Additional context for when teaching this concept"
+      "teaching_context": "Additional context for when teaching this concept",
+      "socratic_question": "A short (max 15 words) test question for this concept that prompts recall without giving the answer."
     }
   }
 }`;
@@ -127,7 +128,8 @@ Respond with ONLY the question, no preamble, no explanation.`;
 // Sends the student's typed answer to Llama and returns { correct, feedback }.
 export async function evaluateAnswer(concept, detail, userAnswer) {
   const systemPrompt = `You are evaluating if a student's answer demonstrates understanding of a concept.
-Respond ONLY with raw JSON (no markdown): {"correct": true, "feedback": "one encouraging sentence"}`;
+If incorrect, provide a subtle HINT that points them toward the right direction without giving the answer.
+Respond ONLY with raw JSON (no markdown): {"correct": boolean, "feedback": "encouraging feedback or subtle hint"}`;
 
   const userPrompt = `Concept: ${concept}\nFull detail: ${detail}\nStudent answered: "${userAnswer}"`;
 
