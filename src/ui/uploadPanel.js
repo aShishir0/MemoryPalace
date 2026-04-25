@@ -23,7 +23,7 @@ export function setupUploadPanel(onBuildCallback) {
     
     try {
       const pdfData = await parsePDF(file);
-      currentSource = pdfData.text;
+      currentSource = { text: pdfData.text, images: pdfData.images };
       buildBtn.disabled = false;
       loading.classList.add('hidden');
     } catch (error) {
@@ -37,7 +37,7 @@ export function setupUploadPanel(onBuildCallback) {
   notesInput.addEventListener('input', (e) => {
     const text = e.target.value.trim();
     if (text.length > 100) {
-      currentSource = text;
+      currentSource = { text, images: [] };
       buildBtn.disabled = false;
       pdfFileName.textContent = ''; // Clear PDF name
     } else {

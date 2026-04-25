@@ -12,13 +12,26 @@ export const STATES = {
   ASSESSMENT_HOVER: 'assessment_hover' // Glow when hovered during assessment
 };
 
-// ── Updated Object Slots to match Grand Hall ──────────────────────────────────
-export const OBJECT_SLOTS = [
+// ── Base object slots (no painting frames — added dynamically) ───────────────
+export const BASE_OBJECT_SLOTS = [
   'fireplace', 'sofa', 'coffee_table', 'bookshelf_1', 'bookshelf_2', 'bookshelf_3',
   'dining_table', 'chairs', 'desk', 'monitor', 'office_chair', 'floor_lamps',
   'plants', 'chandelier', 'piano', 'billiard_table', 'bar_counter', 'trophy_cabinet',
-  'grandfather_clock', 'armchair', 'paintings', 'pillars', 'rugs'
+  'grandfather_clock', 'armchair', 'paintings', 'pillars', 'rugs',
 ];
+
+// Max supported painting frames
+const MAX_PAINTING_SLOTS = 10;
+
+// Build the full slot list for a given image count
+export function buildObjectSlots(imageCount = 0) {
+  const count = Math.min(imageCount, MAX_PAINTING_SLOTS);
+  const paintingSlots = Array.from({ length: count }, (_, i) => `painting_${i + 1}`);
+  return [...BASE_OBJECT_SLOTS, ...paintingSlots];
+}
+
+// Keep a legacy export for anything that still references OBJECT_SLOTS
+export const OBJECT_SLOTS = buildObjectSlots(0);
 
 // ── Object positions (where each group is placed in the room) ─────────────────
 const OBJECT_POSITIONS = {
@@ -45,13 +58,24 @@ const OBJECT_POSITIONS = {
   paintings: { pos: [0, 3.2, -13.88], color: 0xc09050 },
   pillars: { pos: [-7, 0, 10], color: 0xe0d8c8 },
   rugs: { pos: [0, 0, -9.5], color: 0x7a2020 },
+  painting_1:  { pos: [-11.88, 3.4, -7],   color: 0x604020 },  // left wall
+  painting_2:  { pos: [-11.88, 3.4,  0],   color: 0x604020 },
+  painting_3:  { pos: [-11.88, 3.4,  7],   color: 0x604020 },
+  painting_4:  { pos: [-11.88, 3.4, 11],   color: 0x604020 },
+  painting_5:  { pos: [ 11.88, 3.4,-11],   color: 0x604020 },  // right wall
+  painting_6:  { pos: [ 11.88, 3.4, -7],   color: 0x604020 },
+  painting_7:  { pos: [ 11.88, 3.4,  1],   color: 0x604020 },
+  painting_8:  { pos: [ 11.88, 3.4,  5],   color: 0x604020 },
+  painting_9:  { pos: [ -7.0,  3.4, -13.88], color: 0x604020 }, // back/fireplace wall
+  painting_10: { pos: [  7.0,  3.4, -13.88], color: 0x604020 },
 };
 
 // ── Create All Meshes ─────────────────────────────────────────────────────────
-export function createObjects(scene) {
+export function createObjects(scene, imageCount = 0) {
   const meshMap = {};
+  const slots   = buildObjectSlots(imageCount);
 
-  OBJECT_SLOTS.forEach(name => {
+  slots.forEach(name => {
     const def = OBJECT_POSITIONS[name];
     if (!def) return;
 
@@ -69,6 +93,15 @@ export function createObjects(scene) {
           child.receiveShadow = true;
         }
       });
+
+      // Auto-rotate paintings to face the room interior
+      if (name.startsWith('painting_')) {
+        const [px, , pz] = def.pos;
+        if (px < -11)      mesh.rotation.y = Math.PI / 2;   // left wall → face right
+        else if (px > 11)  mesh.rotation.y = -Math.PI / 2;  // right wall → face left
+        else if (pz < -13) mesh.rotation.y = 0;             // back wall → face forward
+        else if (pz > 13)  mesh.rotation.y = Math.PI;       // front wall → face backward
+      }
     } else {
       // Fallback to simple box
       const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -160,18 +193,65 @@ export function updateObjectState(mesh, newState) {
 }
 
 // ── Assign Claude Concepts to Meshes ─────────────────────────────────────────
-export function assignConceptsToMeshes(meshMap, conceptsObj) {
-  Object.entries(conceptsObj).forEach(([slotName, data]) => {
-    const mesh = meshMap[slotName];
-    if (!mesh) return;
+export function assignConceptsToMeshes(meshMap, objectData, images = []) {
+  let imageIndex = 0;
 
-    mesh.userData.hasContent = true;
-    mesh.userData.concept = data.concept;
-    mesh.userData.detail = data.detail;
-    mesh.userData.mnemonic = data.mnemonic;
-    mesh.userData.theme = data.theme;
-    mesh.userData.importance = data.importance;
-    mesh.userData.teaching_context = data.teaching_context || '';
-    mesh.userData.assignedQuestion = data.socratic_question || '';
-  });
+  console.log(`[objects] Assigning concepts. Images: ${images.length}`);
+
+  for (const [name, data] of Object.entries(objectData)) {
+    const mesh = meshMap[name];
+    if (!mesh) continue;
+
+    // The text LLM now provides concept/detail for paintings directly
+    let resolvedData = { ...data };
+    
+    // Ensure paintings have a title/description alias for the UI if LLM only returned concept/detail
+    if (name.startsWith('painting_')) {
+      resolvedData.title = data.title || data.concept || `Figure`;
+      resolvedData.description = data.description || data.detail || '';
+    }
+
+    mesh.userData = {
+      ...mesh.userData,
+      ...resolvedData,
+      hasContent: true,
+      revealed: false,
+      assignedQuestion: resolvedData.socratic_question || '',
+      imageUrl: null,
+    };
+
+    // Apply texture to painting frames
+    if (name.startsWith('painting_') && imageIndex < images.length) {
+      const imageUrl = images[imageIndex++];
+      mesh.userData.imageUrl = imageUrl;
+
+      console.log(`[objects] Applying image to ${name}...`);
+
+      const texture = new THREE.TextureLoader().load(
+        imageUrl,
+        () => console.log(`[objects] ✓ Textured ${name}`),
+        undefined,
+        (err) => console.warn(`[objects] ✗ Texture failed ${name}:`, err)
+      );
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      const canvasMesh = mesh.getObjectByName('painting_canvas');
+      if (canvasMesh) {
+        canvasMesh.material = new THREE.MeshStandardMaterial({
+          map: texture, roughness: 0.4, metalness: 0.05,
+        });
+      } else {
+        mesh.traverse(child => {
+          if (child.isMesh && !child._textured) {
+            child.material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.4 });
+            child._textured = true;
+          }
+        });
+      }
+    }
+
+    updateObjectState(mesh, STATES.LOCKED);
+  }
 }
+
+

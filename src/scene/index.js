@@ -5,7 +5,7 @@ import { createObjects }  from './objects.js';
 import { setupLighting }  from './lighting.js';
 import { setupControls }  from './controls.js';
 
-export function initScene(canvas) {
+export function initScene(canvas, imageCount = 0) {
   // ── Scene ──────────────────────────────────────────────────────
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a0a0f);
@@ -29,7 +29,7 @@ export function initScene(canvas) {
 
   // ── Room + Objects + Lighting ────────────────────────
   buildRoom(scene);
-  const meshMap = createObjects(scene);
+  const meshMap = createObjects(scene, imageCount);
   const lights = setupLighting(scene);
 
   // ── Pointer Lock Controls ──────────────────────────────────────

@@ -394,6 +394,19 @@ export function buildRug(){
   return g;
 }
 
+export function buildWallFrame(){
+  const g = new THREE.Group();
+  // Ornate outer frame
+  g.add(pos(box(2.8, 2.2, 0.12, M(0x7a5030, 0.4, 0.2)), 0, 0, 0));
+  // Inner gold inlay
+  g.add(pos(box(2.5, 1.95, 0.11, M(0xc9a84c, 0.3, 0.4)), 0, 0, 0.005));
+  // Canvas area (inset) — texture applied here
+  const canvas = pos(box(2.3, 1.75, 0.06, M(0xffffff, 0.9)), 0, 0, 0.06);
+  canvas.name = 'painting_canvas';
+  g.add(canvas);
+  return g;
+}
+
 export const BUILDERS = {
   fireplace: buildFireplace,
   sofa: buildSofa,
@@ -417,5 +430,16 @@ export const BUILDERS = {
   armchair: buildArmchair,
   paintings: buildPaintings,
   pillars: buildPillar,
-  rugs: buildRug
+  rugs: buildRug,
+  // painting_1..10 — distributed across all 4 walls
+  painting_1:  buildWallFrame,
+  painting_2:  buildWallFrame,
+  painting_3:  buildWallFrame,
+  painting_4:  buildWallFrame,
+  painting_5:  buildWallFrame,
+  painting_6:  buildWallFrame,
+  painting_7:  buildWallFrame,
+  painting_8:  buildWallFrame,
+  painting_9:  buildWallFrame,
+  painting_10: buildWallFrame,
 };

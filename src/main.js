@@ -2,7 +2,7 @@
 // Orchestrates: upload → Claude API → 3D scene → teaching → assessment → spaced rep
 
 import { initScene } from './scene/index.js';
-import { buildPalaceData } from './api/claude.js';
+import { buildPalaceData, describeImage } from './api/claude.js';
 import { assignConceptsToMeshes, updateObjectState, STATES } from './scene/objects.js';
 import { setupRaycaster } from './interaction/raycaster.js';
 import { showTooltip, hideTooltip } from './interaction/tooltip.js';
@@ -21,26 +21,28 @@ const progressBar = document.getElementById('progress-bar');
 const hud = document.getElementById('hud');
 
 // ── Upload Panel → Build Palace ──────────────────────────────────────────────
-setupUploadPanel(async (sourceText) => {
+setupUploadPanel(async (source) => {
   try {
-    // 1. Call Claude API to build palace
-    const palaceData = await buildPalaceData(sourceText);
+    // source is now { text, images }
+    const { text, images } = source;
+    
+    // 1. Call LLM to build palace (now fast — text truncated, infers images)
+    const palaceData = await buildPalaceData(text, images.length);
     store.palaceData = palaceData;
 
-    // 2. Initialize 3D scene
+    // 3. Initialize 3D scene — only create painting frames for actual images
     const { scene, camera, renderer, controls, meshMap, lights, addFrameCallback } =
-      initScene(canvas);
+      initScene(canvas, images.length);
 
     store.scene = scene;
     store.camera = camera;
     store.renderer = renderer;
     store.controls = controls;
-    store.controls = controls;
     store.meshMap = meshMap;
     store.sceneLights = lights;
 
-    // 3. Assign concepts to meshes
-    assignConceptsToMeshes(meshMap, palaceData.objects);
+    // 3. Assign concepts to meshes, passing image data
+    assignConceptsToMeshes(meshMap, palaceData.objects, images);
 
     // 4. Setup raycaster for hover detection
     const raycasterInstance = setupRaycaster(
@@ -121,12 +123,39 @@ setupUploadPanel(async (sourceText) => {
       const slotName = hit.mesh.userData.slotName;
       const MAX_CLICK_DIST = 5; // Allow clicking from slightly further than glow but still close
 
-      // Exploring mode -> Tutorial start (allow clicking from anywhere)
-      if (store.mode === 'exploring' && slotName === 'fireplace' && !store.tutorialComplete) {
-        console.log('Fireplace interacted! Starting tutorial...');
-        store.mode = 'teaching';
-        startTeachingMode();
-        return;
+      // Painting click → ALWAYS show image info modal, regardless of mode
+      if (slotName.startsWith('painting_') && hit.mesh.userData.hasContent) {
+        const ud    = hit.mesh.userData;
+        const modal = document.getElementById('image-info-modal');
+
+        // Use title/description (new vision format) with concept/detail fallback
+        document.getElementById('image-info-title').textContent    = ud.title       || ud.concept   || 'Figure';
+        document.getElementById('image-info-detail').textContent   = ud.description || ud.detail    || '';
+        document.getElementById('image-info-mnemonic').textContent = ud.mnemonic    || '';
+
+        // Show extracted image if available
+        const imgEl = document.getElementById('image-info-img');
+        if (ud.imageUrl) {
+          imgEl.src = ud.imageUrl;
+          imgEl.style.display = 'block';
+        } else {
+          imgEl.src = '';
+          imgEl.style.display = 'none';
+        }
+
+        modal.classList.remove('hidden');
+        if (controls.isLocked) controls.unlock();
+        return; // Prevent other click handlers (like assessment) from firing
+      }
+
+      // Exploring mode -> Tutorial start
+      if (store.mode === 'exploring') {
+        if (slotName === 'fireplace' && !store.tutorialComplete) {
+          console.log('Fireplace interacted! Starting tutorial...');
+          store.mode = 'teaching';
+          startTeachingMode();
+          return;
+        }
       }
 
       // Assessment mode -> Click to test (requires being near)
@@ -161,13 +190,16 @@ setupUploadPanel(async (sourceText) => {
     console.error('Palace build error:', error);
     loading.classList.add('hidden');
 
-    let errorMessage = 'An unexpected error occurred while building your palace.';
+    let errorMessage = `Build Error: ${error.message}`;
+    
     if (error.message.includes('401') || error.message.includes('invalid API key')) {
       errorMessage = 'API Key invalid or missing. Please check your .env file.';
+    } else if (error.message.includes('404') || error.message.includes('not found')) {
+      errorMessage = `Model Not Found: The AI model requested was not found in your Ollama installation. Please check the model name in claude.js or run 'ollama pull' for the correct model.`;
+    } else if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+      errorMessage = 'Connection Failed: Could not connect to Ollama. Make sure Ollama is running at http://localhost:11434';
     } else if (error.message.includes('429') || error.message.includes('overloaded')) {
       errorMessage = 'The AI providers are currently overloaded. Please try again in a few minutes.';
-    } else if (error.message.includes('OpenRouter error')) {
-      errorMessage = `AI Provider Error: ${error.message}`;
     } else if (error.message.includes('Invalid palace data')) {
       errorMessage = 'The AI returned a malformed response. Try uploading a different document or try again.';
     }
@@ -206,3 +238,12 @@ window.__toggleAudio = () => {
     startAmbient();
   }
 };
+
+// ── Image Info Modal Close ───────────────────────────────────────────────────
+document.getElementById('close-image-info')?.addEventListener('click', () => {
+  document.getElementById('image-info-modal').classList.add('hidden');
+  // Re-lock controls if we are still exploring
+  if (store.controls && store.mode === 'exploring') {
+    store.controls.lock();
+  }
+});

@@ -31,8 +31,9 @@ export function startAssessmentMode() {
   assessmentPanel.classList.add('hidden');
   store.mode             = 'assessment';
   store.assessment.active = true;
-  // Pick a random subset of 5-7 objects for the assessment
-  let pool = [...store.palaceData.teaching_sequence];
+  
+  // Pick a random subset of 5-7 objects for the assessment, EXCLUDING paintings
+  let pool = store.palaceData.teaching_sequence.filter(slot => !slot.startsWith('painting_'));
   pool = pool.sort(() => Math.random() - 0.5);
   store.assessment.subset = pool.slice(0, Math.min(pool.length, 7));
 
@@ -151,7 +152,7 @@ function setupAssessmentListeners() {
   // ── Submit typed answer → Claude evaluates ────────────────────
   if (submitAnswerBtn) {
     submitAnswerBtn.onclick = async () => {
-      const slotName = store.assessment.currentHoveredSlot;
+      const slotName = store.assessment.activeSlot;
       const mesh     = store.meshMap[slotName];
       const answer   = userAnswerEl?.value?.trim();
       if (!answer) return;

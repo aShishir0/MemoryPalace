@@ -800,6 +800,75 @@ body {
   letter-spacing: 2px;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   IMAGE INFO MODAL
+   ══════════════════════════════════════════════════════════════════ */
+#image-info-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  z-index: 300;
+  animation: tooltipIn 0.3s ease;
+}
+
+.image-info-card {
+  background: var(--bg-glass);
+  border: 1.5px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  box-shadow: var(--shadow);
+}
+
+.image-info-card h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  margin-bottom: 14px;
+  color: var(--gold-light);
+  padding-right: 24px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+  transition: var(--transition);
+}
+
+.close-btn:hover {
+  color: white;
+  transform: scale(1.1);
+}
+
+/* Extracted image display */
+#image-info-img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-gold);
+  margin-bottom: 18px;
+  background: rgba(0,0,0,0.3);
+}
+
+/* Make the card scrollable for long content */
+.image-info-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
 .game-over-card p {
   font-size: 16px;
   color: var(--text-dim);
