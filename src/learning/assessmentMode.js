@@ -31,20 +31,33 @@ export function startAssessmentMode() {
   assessmentPanel.classList.add('hidden');
   store.mode             = 'assessment';
   store.assessment.active = true;
-  store.assessment.total  = store.palaceData.teaching_sequence.length;
-  store.assessment.score  = 0;
+  // Pick a random subset of 5-7 objects for the assessment
+  let pool = [...store.palaceData.teaching_sequence];
+  pool = pool.sort(() => Math.random() - 0.5);
+  store.assessment.subset = pool.slice(0, Math.min(pool.length, 7));
 
-  // Load saved spaced rep data (for returning sessions)
+  store.assessment.total  = store.assessment.subset.length;
+  store.assessment.score  = 0;
+  store.assessment.mistakes = 0;
+
+  // Load saved spaced rep data
   loadSpacedRep();
   initSpacedRep(store.palaceData);
 
-  // Reset all objects to LOCKED
-  Object.values(store.meshMap).forEach(mesh => {
-    if (mesh.userData.hasContent) {
+  // Set scene objects: subset is LOCKED, others are IDLE
+  Object.entries(store.meshMap).forEach(([name, mesh]) => {
+    if (mesh.userData.hasContent && store.assessment.subset.includes(name)) {
       mesh.userData.revealed = false;
       updateObjectState(mesh, STATES.LOCKED);
+    } else {
+      updateObjectState(mesh, STATES.IDLE);
     }
   });
+
+  // Reset lights if they were dimmed
+  if (store.sceneLights && store.sceneLights.chanLight) {
+    store.sceneLights.chanLight.intensity = 3.5;
+  }
 
   setupAssessmentListeners();
 }
@@ -52,10 +65,11 @@ export function startAssessmentMode() {
 // ── Listener Setup ────────────────────────────────────────────────────────────
 function setupAssessmentListeners() {
 
-  // ── Hover callback — triggers AI Socratic question ────────────
-  // Called from main.js raycaster when in assessment mode
-  store.onObjectHover = async (slotName) => {
+  // ── Click callback — triggers AI Socratic question ────────────
+  store.onObjectClick = async (slotName) => {
     if (store.assessment.awaitingAnswer) return;
+    if (!store.assessment.subset.includes(slotName)) return; // Only test subset
+
     const mesh = store.meshMap[slotName];
     if (!mesh?.userData.hasContent || mesh.userData.revealed) return;
 
@@ -102,9 +116,19 @@ function setupAssessmentListeners() {
       try {
         const result = await evaluateAnswer(mesh.userData.concept, mesh.userData.detail, answer);
 
+        if (!result.correct) {
+          store.assessment.mistakes++;
+          dimLightsForMistake(store.assessment.mistakes);
+
+          if (store.assessment.mistakes >= 3) {
+            triggerGameOver();
+            return; // Stop further processing
+          }
+        }
+
         // Show AI feedback
         assessmentResult.innerHTML = `
-          <strong>${result.correct ? '✓ Well done!' : '✗ Not quite'}</strong><br>
+          <strong>${result.correct ? '✓ Well done!' : '✗ Not quite (Hint provided)'}</strong><br>
           ${result.feedback}<br><br>
           <em>${mesh.userData.concept}: ${mesh.userData.detail}</em>
         `;
@@ -116,9 +140,14 @@ function setupAssessmentListeners() {
         speak(result.feedback);
 
         // Visual state
-        updateObjectState(mesh, result.correct ? STATES.MASTERED : STATES.LEARNING);
-        mesh.userData.revealed = true;
-        if (result.correct) store.assessment.score++;
+        if (result.correct) {
+          updateObjectState(mesh, STATES.MASTERED);
+          mesh.userData.revealed = true;
+          store.assessment.score++;
+        } else {
+          updateObjectState(mesh, STATES.LOCKED); // Revert to locked so they can try again
+          // Don't mark revealed, let them try again or click Next
+        }
 
         // Spaced repetition update
         const grade = boolToGrade(result.correct);
@@ -135,11 +164,18 @@ function setupAssessmentListeners() {
         submitAnswerBtn.disabled    = false;
         submitAnswerBtn.textContent = 'Submit Answer';
         nextObjectBtn.classList.remove('hidden');
-        store.assessment.awaitingAnswer = false;
+        
+        if (result.correct) {
+          store.assessment.awaitingAnswer = false;
+        } else {
+          // Allow skipping or trying another if they want
+          store.assessment.awaitingAnswer = false;
+        }
 
         updateAssessmentProgress(store.assessment.score, store.assessment.total);
 
-      } catch {
+      } catch (err) {
+        console.error('Evaluation failed:', err);
         submitAnswerBtn.disabled    = false;
         submitAnswerBtn.textContent = 'Submit Answer';
       }
@@ -162,6 +198,45 @@ function setupAssessmentListeners() {
     store.assessment.awaitingAnswer     = false;
     assessmentPanel.classList.add('hidden');
   };
+
+  // ── Restart Assessment ────────────────────────────────────────
+  const restartBtn = document.getElementById('restart-btn');
+  if (restartBtn) {
+    restartBtn.onclick = () => {
+      document.getElementById('game-over').classList.add('hidden');
+      startAssessmentMode();
+    };
+  }
+}
+
+// ── Light Dimming & Game Over Logic ──────────────────────────────────────────
+function dimLightsForMistake(mistakes) {
+  if (!store.sceneLights) return;
+  const { chanLight, ambient, winLight } = store.sceneLights;
+  
+  if (mistakes === 1) {
+    if (chanLight) chanLight.intensity = 1.5;
+    if (ambient) ambient.intensity = 0.15;
+  } else if (mistakes === 2) {
+    if (chanLight) chanLight.intensity = 0.5;
+    if (ambient) ambient.intensity = 0.05;
+    if (winLight) winLight.intensity = 0.1;
+  } else if (mistakes >= 3) {
+    if (chanLight) chanLight.intensity = 0;
+    if (ambient) ambient.intensity = 0;
+    if (winLight) winLight.intensity = 0;
+  }
+}
+
+function triggerGameOver() {
+  assessmentPanel.classList.add('hidden');
+  playTone('incorrect');
+  
+  const gameOverEl = document.getElementById('game-over');
+  if (gameOverEl) gameOverEl.classList.remove('hidden');
+  
+  // Unlock controls to free the mouse
+  if (store.controls) store.controls.unlock();
 }
 
 // ── Reveal + Score a Concept ──────────────────────────────────────────────────

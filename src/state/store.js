@@ -26,8 +26,10 @@ export const store = {
     active: false,
     score: 0,
     total: 0,
+    mistakes: 0,
     attempts: {},
     currentHoveredSlot: null,
+    subset: [], // Only these 5-7 objects will be tested
     awaitingAnswer: false  // true when Claude has asked a question, waiting for user input
   },
 
@@ -41,8 +43,11 @@ export const store = {
     ttsEnabled: true
   },
 
-  // Callback set by assessmentMode.js for hover events in assessment mode
-  onObjectHover: null,
+  // Lights reference
+  sceneLights: null,
+
+  // Callback set by assessmentMode.js for click events in assessment mode
+  onObjectClick: null,
 
   // Method to start assessment — set by main.js
   startAssessmentMode: null

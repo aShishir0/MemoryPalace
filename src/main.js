@@ -28,14 +28,16 @@ setupUploadPanel(async (sourceText) => {
     store.palaceData = palaceData;
 
     // 2. Initialize 3D scene
-    const { scene, camera, renderer, controls, meshMap, addFrameCallback } =
+    const { scene, camera, renderer, controls, meshMap, lights, addFrameCallback } =
       initScene(canvas);
 
     store.scene = scene;
     store.camera = camera;
     store.renderer = renderer;
     store.controls = controls;
+    store.controls = controls;
     store.meshMap = meshMap;
+    store.sceneLights = lights;
 
     // 3. Assign concepts to meshes
     assignConceptsToMeshes(meshMap, palaceData.objects);
@@ -47,16 +49,28 @@ setupUploadPanel(async (sourceText) => {
       (mesh) => {
         // Update store with currently hovered slot
         store.assessment.currentHoveredSlot = mesh.userData.slotName;
-        showTooltip(mesh, store.mode);
-
-        // If in assessment mode, trigger AI question via onObjectHover callback
-        if (store.mode === 'assessment' && store.onObjectHover) {
-          store.onObjectHover(mesh.userData.slotName);
+        
+        // In assessment mode, test objects glow when hovered
+        if (store.mode === 'assessment' && store.assessment.subset.includes(mesh.userData.slotName)) {
+          if (mesh.userData.state === STATES.LOCKED) {
+            updateObjectState(mesh, STATES.ASSESSMENT_HOVER);
+          }
         }
+        
+        showTooltip(mesh, store.mode);
       },
       () => {
         hideTooltip();
+        const hoveredSlot = store.assessment.currentHoveredSlot;
         store.assessment.currentHoveredSlot = null;
+
+        // Revert hover glow
+        if (store.mode === 'assessment' && hoveredSlot) {
+          const mesh = store.meshMap[hoveredSlot];
+          if (mesh && mesh.userData.state === STATES.ASSESSMENT_HOVER) {
+            updateObjectState(mesh, STATES.LOCKED);
+          }
+        }
       }
     );
     addFrameCallback(raycasterInstance.update);
@@ -74,15 +88,22 @@ setupUploadPanel(async (sourceText) => {
     // 7. Tutorial Trigger Logic
     store.mode = 'exploring';
 
-    // Create a click listener for the trigger object (fireplace)
     canvas.addEventListener('mousedown', () => {
       const interactedMesh = raycasterInstance.handleInteraction();
-      if (interactedMesh && interactedMesh.userData.slotName === 'fireplace') {
-        if (store.mode === 'exploring' && !store.tutorialComplete) {
-          console.log('Fireplace interacted! Starting tutorial...');
-          store.mode = 'teaching';
-          startTeachingMode();
-        }
+      if (!interactedMesh) return;
+
+      const slotName = interactedMesh.userData.slotName;
+
+      // Exploring mode -> Tutorial start
+      if (store.mode === 'exploring' && slotName === 'fireplace' && !store.tutorialComplete) {
+        console.log('Fireplace interacted! Starting tutorial...');
+        store.mode = 'teaching';
+        startTeachingMode();
+      }
+
+      // Assessment mode -> Click to test
+      if (store.mode === 'assessment' && store.onObjectClick) {
+        store.onObjectClick(slotName);
       }
     });
 
@@ -124,6 +145,10 @@ store.startAssessmentMode = startAssessmentMode;
 
 // ── Keyboard Shortcuts ───────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
+  // Ignore shortcuts if the user is typing in an input or textarea
+  const tagName = e.target.tagName.toLowerCase();
+  if (tagName === 'input' || tagName === 'textarea') return;
+
   // E = self-recall in assessment mode
   if (
     e.code === 'KeyE' &&

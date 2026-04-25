@@ -31,7 +31,7 @@ export function initScene(canvas) {
   // ── Room + Objects + Lighting ──────────────────────────────────
   buildRoom(scene);
   const meshMap = createObjects(scene);
-  setupLighting(scene);
+  const lights = setupLighting(scene);
 
   // ── Pointer Lock Controls ──────────────────────────────────────
   const controls = new PointerLockControls(camera, canvas);
@@ -65,6 +65,7 @@ export function initScene(canvas) {
     renderer,
     controls,
     meshMap,
+    lights,
     addFrameCallback: (cb) => frameCallbacks.push(cb)
   };
 }

@@ -113,11 +113,12 @@ Return ONLY valid JSON with no markdown fences, no preamble, matching this schem
 // Asks Llama to generate a short Socratic question to prompt recall
 // without giving away the answer.
 export async function askConceptQuestion(concept, detail, mnemonic) {
-  const systemPrompt = `You are a Socratic tutor helping a student recall a concept from a memory palace.
-Ask ONE short question (max 20 words) that prompts recall WITHOUT giving away the answer.
+  const systemPrompt = `You are a strict examiner testing a student's knowledge.
+Ask ONE short question (max 15 words) that tests their understanding of the given concept.
+CRITICAL: Do NOT mention the memory palace, the mnemonic, or any objects. Test the concept directly.
 Respond with ONLY the question, no preamble, no explanation.`;
 
-  const userPrompt = `Concept: ${concept}\nDetail: ${detail}\nMnemonic: ${mnemonic}`;
+  const userPrompt = `Concept: ${concept}\nDetail: ${detail}`;
 
   return callLLM(systemPrompt, userPrompt, 80);
 }
