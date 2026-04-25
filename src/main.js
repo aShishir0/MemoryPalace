@@ -74,13 +74,15 @@ setupUploadPanel(async (sourceText) => {
     // 7. Tutorial Trigger Logic
     store.mode = 'exploring';
 
-    // Create a click listener for the trigger screen
+    // Create a click listener for the trigger object (fireplace)
     canvas.addEventListener('mousedown', () => {
       const interactedMesh = raycasterInstance.handleInteraction();
-      if (interactedMesh && interactedMesh.userData.slotName === 'monitor') {
-        console.log('Trigger screen interacted! Starting tutorial...');
-        store.mode = 'teaching';
-        startTeachingMode();
+      if (interactedMesh && interactedMesh.userData.slotName === 'fireplace') {
+        if (store.mode === 'exploring' && !store.tutorialComplete) {
+          console.log('Fireplace interacted! Starting tutorial...');
+          store.mode = 'teaching';
+          startTeachingMode();
+        }
       }
     });
 

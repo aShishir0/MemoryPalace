@@ -22,7 +22,13 @@ const submitAnswerBtn  = document.getElementById('submit-answer-btn');
 
 // ── Entry Point ───────────────────────────────────────────────────────────────
 export function startAssessmentMode() {
-  assessmentPanel.classList.remove('hidden');
+  // Don't allow assessment until the tutorial is finished
+  if (!store.tutorialComplete) {
+    console.warn('Assessment blocked — complete the tutorial first.');
+    return;
+  }
+
+  assessmentPanel.classList.add('hidden');
   store.mode             = 'assessment';
   store.assessment.active = true;
   store.assessment.total  = store.palaceData.teaching_sequence.length;
@@ -56,7 +62,8 @@ function setupAssessmentListeners() {
     store.assessment.awaitingAnswer     = true;
     store.assessment.currentHoveredSlot = slotName;
 
-    // Show loading state
+    // Show panel and loading state
+    assessmentPanel.classList.remove('hidden');
     if (aiQuestionEl) {
       aiQuestionEl.textContent = '🤔 Thinking of a question...';
       aiQuestionEl.classList.remove('hidden');
@@ -153,6 +160,7 @@ function setupAssessmentListeners() {
     revealBtn.classList.remove('hidden');
     store.assessment.currentHoveredSlot = null;
     store.assessment.awaitingAnswer     = false;
+    assessmentPanel.classList.add('hidden');
   };
 }
 

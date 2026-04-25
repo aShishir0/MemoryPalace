@@ -47,13 +47,14 @@ export async function buildPalaceData(sourceText) {
   const systemPrompt = `You are an expert educational AI that creates spatial memory palaces using the Method of Loci technique.
 
 Given study material, you will:
-1. Extract 10-12 key concepts
-2. Map each concept to a physical object in a room
+1. Extract key concepts (use as many of the available objects as the material supports, up to 20)
+2. Map each concept to a physical object in a grand hall
 3. Create vivid mnemonics for each
 4. Generate an optimal TEACHING SEQUENCE (order to introduce concepts)
 5. Provide context and details for teaching mode
 
-Available objects: sofa, armchair, bookshelf, desk, painting_1, painting_2, painting_3, window, lamp, plant, globe, clock
+You MUST ONLY use object names from this exact list (use the exact spelling):
+sofa, coffee_table, bookshelf_1, bookshelf_2, bookshelf_3, dining_table, chairs, desk, monitor, office_chair, floor_lamps, plants, chandelier, piano, billiard_table, bar_counter, trophy_cabinet, grandfather_clock, armchair, paintings, pillars, rugs, fireplace
 
 Teaching sequence should:
 - Start with foundational concepts
@@ -65,7 +66,7 @@ Return ONLY valid JSON with no markdown fences, no preamble, matching this schem
 {
   "palace_name": "Short catchy name",
   "themes": ["Theme 1", "Theme 2"],
-  "teaching_sequence": ["sofa", "bookshelf", "desk"],
+  "teaching_sequence": ["sofa", "bookshelf_1", "desk"],
   "objects": {
     "sofa": {
       "concept": "Main concept name",

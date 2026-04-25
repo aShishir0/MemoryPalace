@@ -24,12 +24,24 @@ export function startTeachingMode() {
   currentIndex = 0;
   learnedConcepts.clear();
 
+  // Sanitize teaching_sequence: keep only slots that exist in BOTH meshMap and palaceData.objects
+  store.palaceData.teaching_sequence = store.palaceData.teaching_sequence.filter(
+    slot => store.meshMap[slot] && store.palaceData.objects[slot]
+  );
+
+  if (store.palaceData.teaching_sequence.length === 0) {
+    console.error('No valid teaching slots found — LLM may have returned wrong object names.');
+    teachingPanel.classList.add('hidden');
+    return;
+  }
+
   // Start ambient palace sound
   startAmbient();
 
   // Light up the first object
   const firstSlot = store.palaceData.teaching_sequence[0];
-  updateObjectState(store.meshMap[firstSlot], STATES.LEARNING);
+  const firstMesh = store.meshMap[firstSlot];
+  if (firstMesh) updateObjectState(firstMesh, STATES.LEARNING);
 
   showConcept(currentIndex);
   setupEventListeners();
@@ -104,6 +116,7 @@ function setupEventListeners() {
 // ── End Teaching Mode ─────────────────────────────────────────────────────────
 function endTeachingMode() {
   teachingPanel.classList.add('hidden');
+  store.tutorialComplete = true;
 
   // Reset all objects to LOCKED so the player has to recall them in assessment
   store.palaceData.teaching_sequence.forEach(slotName => {

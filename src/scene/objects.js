@@ -3,7 +3,8 @@ import * as THREE from 'three';
 
 // ── Object Visual States ──────────────────────────────────────────────────────
 export const STATES = {
-  LOCKED:   'locked',    // Not yet taught — gray/faded
+  IDLE:     'idle',      // Default — fully opaque, base color, no learning state yet
+  LOCKED:   'locked',    // Not yet taught — gray/faded (assessment mode)
   LEARNING: 'learning',  // Currently being taught — normal color
   MASTERED: 'mastered',  // Successfully recalled — golden glow
   REVIEW:   'review'     // Due for spaced repetition — pulsing blue glow
@@ -68,11 +69,11 @@ export function createObjects(scene) {
     mesh.userData = {
       slotName:   def.name,
       baseColor:  def.color,
-      state:      STATES.LOCKED,
+      state:      STATES.IDLE,
       hasContent: false
     };
 
-    updateObjectState(mesh, STATES.LOCKED);
+    updateObjectState(mesh, STATES.IDLE);
     scene.add(mesh);
     meshMap[def.name] = mesh;
   });
@@ -87,6 +88,14 @@ export function updateObjectState(mesh, newState) {
   const baseColor = new THREE.Color(mesh.userData.baseColor);
 
   switch (newState) {
+    case STATES.IDLE:
+      mat.color.copy(baseColor);
+      mat.emissive.setHex(0x000000);
+      mat.emissiveIntensity = 0;
+      mat.opacity     = 1;
+      mat.transparent = false;
+      break;
+
     case STATES.LOCKED:
       mat.color.setHex(0x444444);
       mat.emissive.setHex(0x000000);

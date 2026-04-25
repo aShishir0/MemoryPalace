@@ -12,7 +12,8 @@ export const store = {
   palaceData: null,
 
   // Learning flow
-  mode: 'upload', // 'upload' | 'teaching' | 'assessment' | 'review'
+  mode: 'upload', // 'upload' | 'exploring' | 'teaching' | 'assessment' | 'review'
+  tutorialComplete: false, // Set to true when teaching mode finishes
 
   // Teaching progress
   teaching: {
