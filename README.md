@@ -2,7 +2,7 @@
 
 *Built for the Infinity Hackathon*
 
-Memory Palace Enhanced is an immersive 3D spatial learning application that transforms your study materials into an interactive virtual memory palace. By leveraging the ancient "Method of Loci" memorization technique alongside modern AI and spaced repetition algorithms, this project aims to drastically improve knowledge retention.
+Memory Palace is an immersive 3D spatial learning application that transforms your study materials into an interactive virtual memory palace. By leveraging the ancient "Method of Loci" memorization technique alongside modern AI and spaced repetition algorithms, this project aims to drastically improve knowledge retention.
 
 ## Features
 
