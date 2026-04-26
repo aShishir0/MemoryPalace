@@ -1,4 +1,4 @@
-# Memory Palace Enhanced 🏛️
+# Memory Palace
 
 *Built for the Infinity Hackathon*
 
