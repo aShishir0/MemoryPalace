@@ -73,6 +73,7 @@ export function startAssessmentMode() {
     userAnswerEl.classList.add('hidden');
   }
 
+  updateAssessmentProgress(0, store.assessment.total);
   setupAssessmentListeners();
 }
 
@@ -248,6 +249,10 @@ function setupAssessmentListeners() {
         }
 
         updateAssessmentProgress(store.assessment.score, store.assessment.total);
+        
+        if (store.assessment.score >= store.assessment.total) {
+          setTimeout(() => triggerTopicComplete(), 1500);
+        }
 
       } catch (err) {
         console.error('Evaluation failed:', err);
@@ -296,6 +301,13 @@ function setupAssessmentListeners() {
       window.location.reload(); // Simple way to reset to the start
     };
   }
+
+  const topicHomeBtn = document.getElementById('topic-home-btn');
+  if (topicHomeBtn) {
+    topicHomeBtn.onclick = () => {
+      window.location.reload();
+    };
+  }
 }
 
 // ── Light Dimming & Game Over Logic ──────────────────────────────────────────
@@ -329,6 +341,17 @@ function triggerGameOver() {
   
   const gameOverEl = document.getElementById('game-over');
   if (gameOverEl) gameOverEl.classList.remove('hidden');
+  
+  // Unlock controls to free the mouse
+  if (store.controls) store.controls.unlock();
+}
+
+function triggerTopicComplete() {
+  assessmentPanel.classList.add('hidden');
+  playTone('correct');
+  
+  const topicCompleteEl = document.getElementById('topic-complete');
+  if (topicCompleteEl) topicCompleteEl.classList.remove('hidden');
   
   // Unlock controls to free the mouse
   if (store.controls) store.controls.unlock();
@@ -401,6 +424,10 @@ export function revealConcept(slotName, selfRecalled) {
   saveSpacedRep();
 
   updateAssessmentProgress(store.assessment.score, store.assessment.total);
+
+  if (store.assessment.score >= store.assessment.total) {
+    setTimeout(() => triggerTopicComplete(), 1500);
+  }
 }
 
 // ── E-key Self-Recall Shortcut ────────────────────────────────────────────────

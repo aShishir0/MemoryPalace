@@ -23,7 +23,7 @@ export function updateTeachingProgress(learned, total) {
 export function updateAssessmentProgress(score, total) {
   const pct = (score / total) * 100;
   progressFill.style.width = `${pct}%`;
-  progressLabel.textContent = `Score: ${score}/${total}`;
+  progressLabel.textContent = `${score}/${total} Hidden Questions Found`;
 }
 
 // Full reset

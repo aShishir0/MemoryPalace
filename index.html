@@ -67,7 +67,6 @@
 
     <button id="build-btn" class="primary-btn" disabled>Build My Learning Palace</button>
 
-    <a href="#" class="demo-link">Skip for now, explore demo palace</a>
   </div>
 
   <!-- ── Teaching Mode Panel ──────────────────────────────────── -->
@@ -191,13 +190,6 @@
         <circle cx="120" cy="110" r="2" fill="#111116" /> <!-- Inner hole -->
       </svg>
 
-      <!-- Labels -->
-      <div class="node-label" style="top: 24%; left: 68%;">
-        <span class="label-dot gold"></span> ENTITY LINKED
-      </div>
-      <div class="node-label" style="top: 70%; right: 66%;">
-        <span class="label-dot violet"></span> SYNTAX PARSED
-      </div>
     </div>
 
     <h2 class="loading-title">Deepening Knowledge...</h2>
@@ -229,6 +221,19 @@
       <div class="game-over-controls" style="display:flex; gap:16px; justify-content:center;">
         <button id="study-again-btn" class="primary-btn">Study Again</button>
         <button id="quit-btn" class="secondary-btn">Quit to Home</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Topic Complete Panel ──────────────────────────────────────── -->
+  <div id="topic-complete" class="hidden"
+    style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:300;">
+    <div class="game-over-card" style="border-color: var(--gold-light); box-shadow: 0 0 50px rgba(212, 168, 83, 0.4);">
+      <h2 style="color: var(--gold-light);">Topic Completed!</h2>
+      <p>You have successfully found and answered all hidden questions in this room.</p>
+      <div class="game-over-controls" style="display:flex; gap:16px; justify-content:center; margin-top: 24px;">
+        <button id="topic-home-btn" class="primary-btn" style="padding: 14px 48px; border-radius: 30px;">Navigate to
+          Home Page</button>
       </div>
     </div>
   </div>
