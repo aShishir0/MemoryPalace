@@ -16,20 +16,18 @@ export function setupUploadPanel(onBuildCallback) {
     const file = e.target.files[0];
     if (!file) return;
     
-    pdfFileName.textContent = `📄 ${file.name}`;
+    pdfFileName.textContent = `Parsing PDF...`;
     notesInput.value = ''; // Clear text input
-    
-    loading.classList.remove('hidden');
     
     try {
       const pdfData = await parsePDF(file);
       currentSource = { text: pdfData.text, images: pdfData.images };
       buildBtn.disabled = false;
-      loading.classList.add('hidden');
+      pdfFileName.textContent = `📄 ${file.name}`;
     } catch (error) {
       console.error('PDF parsing error:', error);
       alert('Error parsing PDF. Please try a different file.');
-      loading.classList.add('hidden');
+      pdfFileName.textContent = 'Error parsing PDF';
     }
   });
   
@@ -53,39 +51,44 @@ export function setupUploadPanel(onBuildCallback) {
     loading.classList.remove('hidden');
 
     // Premium Loading Animation
-    const chips = [
-      { title: "Reading Notes", desc: "Analyzing your source material", icon: "📄" },
-      { title: "Spatial Mapping", desc: "Placing concepts in the hall", icon: "🏛️" },
-      { title: "Synthesizing MNMNCS", desc: "Crafting vivid associations", icon: "💡" },
-      { title: "AI Ready", desc: "Finalizing your learning palace", icon: "✨" }
+    const stages = [
+      { text: "READING NOTES" },
+      { text: "MAPPING SPATIAL NODES" },
+      { text: "SYNTHESIZING MNMNCS" },
+      { text: "AI READY" }
     ];
     
-    let chipIndex = 0;
-    const wrapper = document.getElementById('chips-wrapper');
+    let stageIndex = 0;
     const status = document.getElementById('loading-status');
+    const dots = document.querySelectorAll('.p-dot');
+    const lineFill = document.getElementById('progress-line-fill');
     
-    const nextChip = () => {
-      const c = chips[chipIndex];
-      status.textContent = c.title + "...";
-      wrapper.innerHTML = `
-        <div class="loading-chip">
-          <div class="chip-icon">${c.icon}</div>
-          <div class="chip-info">
-            <span class="chip-title">${c.title}</span>
-            <span class="chip-desc">${c.desc}</span>
-          </div>
-        </div>
-      `;
-      chipIndex = (chipIndex + 1) % chips.length;
+    const nextStage = () => {
+      const s = stages[stageIndex];
+      status.textContent = s.text;
+      
+      dots.forEach((dot, idx) => {
+        dot.className = 'p-dot';
+        if (idx < stageIndex) dot.classList.add('active');
+        else if (idx === stageIndex) dot.classList.add('current');
+      });
+      
+      if (lineFill) {
+        lineFill.style.width = `${(stageIndex / (stages.length - 1)) * 100}%`;
+      }
+      
+      if (stageIndex < stages.length - 1) {
+        stageIndex++;
+      }
     };
     
-    nextChip();
-    const chipInterval = setInterval(nextChip, 3000);
+    nextStage();
+    const stageInterval = setInterval(nextStage, 4000);
     
     try {
       await onBuildCallback(currentSource);
     } finally {
-      clearInterval(chipInterval);
+      clearInterval(stageInterval);
     }
   });
 }

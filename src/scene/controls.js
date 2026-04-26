@@ -5,6 +5,10 @@ export function setupControls(controls) {
   const keys = { w: false, a: false, s: false, d: false };
 
   document.addEventListener('keydown', e => {
+    // Ignore input if user is typing in an input or textarea
+    const tagName = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    if (tagName === 'input' || tagName === 'textarea') return;
+
     if (e.code === 'KeyW') keys.w = true;
     if (e.code === 'KeyA') keys.a = true;
     if (e.code === 'KeyS') keys.s = true;

@@ -1,45 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Memory Palace Enhanced</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
+
 <body>
 
   <!-- ── Upload Panel ─────────────────────────────────────────── -->
   <div id="upload-panel">
-    <h1>🏛️ Memory Palace Enhanced</h1>
+    <div class="logo-circle">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold-light)" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+      </svg>
+    </div>
+    <h1>Memory Palace</h1>
     <p class="subtitle">Transform your study materials into an immersive 3D learning experience</p>
 
     <div class="upload-options">
       <div class="upload-box" id="pdf-upload-box">
-        <div class="upload-icon">📄</div>
-        <h3>Upload PDF</h3>
+        <div class="icon-circle">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="var(--gold-light)" stroke="var(--bg-card)"
+            stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <polyline points="9 15 12 12 15 15"></polyline>
+          </svg>
+        </div>
+        <h3>Upload Document</h3>
+        <p class="box-desc">Import comprehensive source material.<br />Supports PDF, DOCX, and TXT formats for<br />deep
+          structural analysis.</p>
         <input type="file" id="pdf-input" accept=".pdf" hidden />
-        <button class="upload-btn" onclick="document.getElementById('pdf-input').click()">
-          Choose PDF
+        <button class="upload-btn primary-btn" onclick="document.getElementById('pdf-input').click()">
+          BROWSE FILES &rarr;
         </button>
         <p class="file-name" id="pdf-file-name"></p>
       </div>
 
-      <div class="divider">OR</div>
-
-      <div class="upload-box">
-        <div class="upload-icon">📝</div>
+      <div class="upload-box" id="notes-upload-box">
+        <div class="icon-circle violet">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="transparent" stroke="var(--violet-light)"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+          </svg>
+        </div>
         <h3>Paste Notes</h3>
-        <textarea id="notes-input" placeholder="Paste your study notes here..."></textarea>
+        <p class="box-desc" id="notes-desc">Quickly input raw text, lecture<br />transcripts, or scattered thoughts
+          directly<br />into the parsing engine.</p>
+        <button class="upload-btn secondary-btn" id="open-editor-btn"
+          onclick="document.getElementById('notes-input').classList.remove('hidden'); document.getElementById('notes-desc').classList.add('hidden'); document.getElementById('open-editor-btn').classList.add('hidden'); document.getElementById('notes-input').focus();">
+          OPEN EDITOR <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" style="margin-left: 6px; vertical-align: middle;">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </button>
+        <textarea id="notes-input" class="hidden" placeholder="Paste your study notes here..."></textarea>
       </div>
     </div>
 
     <button id="build-btn" class="primary-btn" disabled>Build My Learning Palace</button>
+
+    <a href="#" class="demo-link">Skip for now, explore demo palace</a>
   </div>
 
   <!-- ── Teaching Mode Panel ──────────────────────────────────── -->
   <div id="teaching-panel" class="hidden">
     <div class="teaching-card">
       <div class="teaching-header">
-        <span class="mode-badge">📖 Teaching Mode</span>
+        <span class="mode-badge">Teaching Mode</span>
         <span class="progress-text" id="teaching-progress">Concept 1 of 10</span>
       </div>
 
@@ -47,19 +82,18 @@
         <h2 id="concept-title">Loading...</h2>
         <div id="concept-detail" class="detail-text"></div>
         <div id="concept-mnemonic" class="mnemonic-box">
-          <strong>💡 Memory Tip:</strong>
+          <strong>Memory Tip:</strong>
           <p id="mnemonic-text"></p>
         </div>
       </div>
-
       <div class="teaching-controls">
-        <button id="prev-concept-btn" class="secondary-btn">← Previous</button>
-        <button id="mark-learned-btn" class="primary-btn">✓ I've Got This</button>
-        <button id="next-concept-btn" class="primary-btn">Next →</button>
+        <button id="prev-concept-btn" class="secondary-btn">Previous</button>
+        <button id="mark-learned-btn" class="primary-btn">I've Got This</button>
+        <button id="next-concept-btn" class="primary-btn">Next</button>
       </div>
 
       <button id="ready-assessment-btn" class="assessment-ready-btn hidden">
-        🎯 I'm Ready for Assessment
+        I'm Ready for Assessment
       </button>
     </div>
   </div>
@@ -72,7 +106,8 @@
 
       <!-- AI Socratic question (Part 6) -->
       <div id="ai-question" class="hidden"></div>
-      <div id="assessment-hint" class="hidden" style="font-size: 14px; color: var(--gold); margin-bottom: 12px; font-style: italic;"></div>
+      <div id="assessment-hint" class="hidden"
+        style="font-size: 14px; color: var(--gold); margin-bottom: 12px; font-style: italic;"></div>
 
       <!-- User typed answer (Part 6) -->
       <input id="user-answer" type="text" class="hidden" placeholder="Type your answer..." />
@@ -103,18 +138,87 @@
   <div id="crosshair"></div>
 
   <div id="loading" class="hidden">
-    <div class="bucket-container">
-      <svg viewBox="0 0 655 352" class="bucket-svg">
-        <path d="M535.59 78.7427L487.973 42.8776L558.738 13.9516C562.902 12.2494 564.984 11.3984 567.143 11.5597C569.301 11.7211 571.233 12.8723 575.098 15.1747L590.22 24.1832C603.923 32.347 610.775 36.4289 610.372 42.0779C609.97 47.7269 602.609 50.7964 587.887 56.9354L535.59 78.7427Z" class="bucket-glass" />
-        <path d="M123.116 79.1145L171.548 42.8776L97.2715 12.5164C94.8305 11.5186 93.61 11.0197 92.3446 11.1143C91.0793 11.2089 89.9465 11.8837 87.681 13.2334L56.155 32.0149C48.1832 36.7641 44.1973 39.1386 44.4205 42.4378C44.6438 45.737 48.9132 47.553 57.4522 51.1849L123.116 79.1145Z" class="bucket-glass" />
-        <path d="M487.973 42.8774L171.548 42.8775L123.116 79.1144L535.59 78.7424L487.973 42.8774Z" fill="white" fill-opacity="0.1" />
-        <path d="M74.6011 164.033L123.116 79.1138L535.59 78.7419L581.532 164.469C588.006 176.55 591.243 182.59 588.568 187.06C585.892 191.529 579.039 191.529 565.333 191.529H90.5591C76.4759 191.529 69.4343 191.529 66.7781 186.953C64.1219 182.376 67.615 176.262 74.6011 164.033Z" class="bucket-glass" />
+    <div class="node-graph-container">
+      <div class="orbital-ring ring-1"></div>
+      <div class="orbital-ring ring-2"></div>
+
+      <svg class="node-edges" viewBox="0 0 240 240">
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <!-- Edges -->
+        <line x1="120" y1="40" x2="190" y2="90" class="edge" />
+        <line x1="190" y1="90" x2="160" y2="170" class="edge" />
+        <line x1="160" y1="170" x2="80" y2="170" class="edge" />
+        <line x1="80" y1="170" x2="50" y2="90" class="edge" />
+        <line x1="50" y1="90" x2="120" y2="40" class="edge" />
+
+        <line x1="120" y1="110" x2="120" y2="40" class="edge" />
+        <line x1="120" y1="110" x2="190" y2="90" class="edge" />
+        <line x1="120" y1="110" x2="160" y2="170" class="edge" />
+        <line x1="120" y1="110" x2="80" y2="170" class="edge" />
+        <line x1="120" y1="110" x2="50" y2="90" class="edge" />
+
+        <!-- Connecting lines for labels -->
+        <polyline points="150,65 175,65" stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none" />
+        <line x1="120" y1="40" x2="150" y2="65" stroke="rgba(255,255,255,0.15)" stroke-width="1"
+          stroke-dasharray="2 2" />
+
+        <polyline points="90,175 60,175" stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none" />
+        <line x1="80" y1="170" x2="90" y2="175" stroke="rgba(255,255,255,0.15)" stroke-width="1"
+          stroke-dasharray="2 2" />
+
+        <!-- Extra subtle nodes -->
+        <circle cx="160" cy="60" r="1.5" fill="rgba(255,255,255,0.3)" />
+        <circle cx="90" cy="190" r="1.5" fill="rgba(255,255,255,0.3)" />
+        <circle cx="150" cy="140" r="1.5" fill="rgba(255,255,255,0.3)" />
+
+        <!-- Main Nodes -->
+        <circle cx="120" cy="40" r="4" class="node-circle active glow" />
+        <circle cx="190" cy="90" r="3" class="node-circle" />
+        <circle cx="160" cy="170" r="5" class="node-circle active glow" />
+        <circle cx="80" cy="170" r="3" class="node-circle" />
+        <circle cx="50" cy="90" r="4" class="node-circle active glow" />
+
+        <!-- Central Node -->
+        <circle cx="120" cy="110" r="6" class="node-circle center glow" />
+        <circle cx="120" cy="110" r="2" fill="#111116" /> <!-- Inner hole -->
       </svg>
-      <div class="chips-wrapper" id="chips-wrapper">
-        <!-- Chips will be injected here by JS -->
+
+      <!-- Labels -->
+      <div class="node-label" style="top: 24%; left: 68%;">
+        <span class="label-dot gold"></span> ENTITY LINKED
+      </div>
+      <div class="node-label" style="top: 70%; right: 66%;">
+        <span class="label-dot violet"></span> SYNTAX PARSED
       </div>
     </div>
-    <p class="loading-status" id="loading-status">Reading your notes...</p>
+
+    <h2 class="loading-title">Deepening Knowledge...</h2>
+
+    <div class="loading-badge" id="loading-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--gold-light)" stroke="none">
+        <rect x="3" y="3" width="8" height="8" rx="1"></rect>
+        <rect x="13" y="13" width="8" height="8" rx="1"></rect>
+        <rect x="13" y="3" width="8" height="8" rx="1"></rect>
+      </svg>
+      <span id="loading-status">MAPPING SPATIAL NODES</span>
+    </div>
+
+    <div class="progress-dots">
+      <div class="progress-line"></div>
+      <div class="progress-line-fill" id="progress-line-fill" style="width: 0%"></div>
+      <div class="p-dot current"></div>
+      <div class="p-dot"></div>
+      <div class="p-dot"></div>
+      <div class="p-dot"></div>
+    </div>
   </div>
 
   <!-- ── Game Over Panel ──────────────────────────────────────── -->
@@ -145,4 +249,5 @@
 
   <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>
